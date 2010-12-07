@@ -1,0 +1,3 @@
+PerfExpert 0.1
+
+Alpha code. Aimed to be an expert system that mines performance-counter-based information to identify key sections of code, which when transformed, would give the most bang-for-the-buck. Ultimately aimed to be able to apply program transformations automatically.

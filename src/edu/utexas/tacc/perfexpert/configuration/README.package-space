@@ -1,0 +1,3 @@
+Contains classes for dealing with configuration:
+  a. Machine constants (L1 latency, branch misprediction latency, etc.)
+  b. PerfExpert metrics-of-interest
