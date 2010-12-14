@@ -1,4 +1,4 @@
-package edu.utexas.tacc.perfexpert.parsing;
+package edu.utexas.tacc.perfexpert.parsing.hpctoolkit;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -9,20 +9,29 @@ import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 
-import edu.utexas.tacc.perfexpert.CustomException;
+import javax.xml.parsers.SAXParserFactory;
+
+import org.apache.log4j.Logger;
+import org.xml.sax.SAXException;
+
+import edu.utexas.tacc.perfexpert.parsing.AParser;
+import edu.utexas.tacc.perfexpert.parsing.ITreeParsing;
 import edu.utexas.tacc.perfexpert.parsing.profiles.AProfile;
 import edu.utexas.tacc.perfexpert.parsing.profiles.GenericProfile;
 
 public class HPCToolkitParser extends AParser implements ITreeParsing
 {
+	private static Logger log = Logger.getLogger( HPCToolkitParser.class );
+	
 	RandomAccessFile file;
 	ArrayList<GenericProfile> profiles = new ArrayList<GenericProfile>();
 	
 	final String JAVA_PATH = "/usr/bin/java";
-	final String LIB_DIR = "/tmp/perfexpert/lib";
+	final String LIB_DIR = "/home/klaus/temp/perfexpert/lib";
 	final String classPath = LIB_DIR + "/hpcdata.jar:" + LIB_DIR + "/org.apache.xerces_2.9.0.v200909240008.jar:" + LIB_DIR + "/org.eclipse.jface_3.5.1.M20090826-0800.jar";
 	final String className = "edu.rice.cs.hpc.data.framework.Application";
-	
+
+	String convertedFilename;
 	public HPCToolkitParser(String sourceURI)
 	{
 		super(sourceURI);
@@ -54,22 +63,41 @@ public class HPCToolkitParser extends AParser implements ITreeParsing
 	@Override
 	public void parse()
 	{
-		// Assuming TREE-form parsing, hence not switching based on selection
+		log.debug("Beginning to parse \"" + sourceURI + "\"");
 		
 		// Figure out if we are going to parse from raw data or file or something else
 		int fileIndex = sourceURI.indexOf("://");
 		if (sourceURI.substring(0, fileIndex).equals("file"))
 		{
 			String filename = sourceURI.substring("file://".length());
-			String outputFilename = filename + ".converted";
+			convertedFilename = filename + ".converted";
+			
+			// Check if File exists
+			if (!new File (filename).exists())
+			{
+				log.error("Input XML file does not exist: " + filename);
+				return;
+			}
 
 			// Convert to simpler XML format to be used with parsing
 			Process p;
+			StringBuilder err = new StringBuilder();
 			try
 			{
-				log.debug("Converting input file \"" + filename + "\" to simpler XML: \"" + outputFilename + "\"");
+				log.debug("Converting input file \"" + filename + "\" to simpler XML: \"" + convertedFilename + "\"");
 				p = new ProcessBuilder(JAVA_PATH, "-cp", classPath, className, filename).start();
-				writeStreamToFile(p.getInputStream(), outputFilename);
+				writeStreamToFile(p.getInputStream(), convertedFilename);
+				
+				// Check if there were errors
+				byte [] byteArray = new byte [1024];
+				while (p.getErrorStream().read(byteArray) > 0)
+					err.append(new String(byteArray));
+				
+				if (new String(err).contains("Exception"))
+				{
+					log.error("Error converting input file \"" + filename + "\":\n" + err);
+					return;
+				}
 			}
 			catch (IOException e)
 			{
@@ -78,7 +106,8 @@ public class HPCToolkitParser extends AParser implements ITreeParsing
 				return;
 			}
 			
-			log.info("Input file conversion complete: " + outputFilename);
+			// Conversion writes messages to standard error, so printing them here
+			log.info(err);
 			
 			// Set up stream
 			try
@@ -90,20 +119,6 @@ public class HPCToolkitParser extends AParser implements ITreeParsing
 				log.info("Could not find input file: " + filename);
 				return;
 			}
-
-		/*
-			// Validate syntax
-			try
-			{
-				validateInputSyntax();
-			}
-			catch(CustomException e)
-			{
-				log.error("Converted file (" + outputFilename + ") does not seem to contain a valid syntax\n" + e.getMessage()
-						+ "\nCommand used for converting: " + JAVA_PATH + " -cp " + classPath + " " + className + " " + filename
-						+ "\nTrying to proceed...");
-			}]
-		*/
 
 			// Get the big wheels turning...
 			process();			
@@ -120,32 +135,29 @@ public class HPCToolkitParser extends AParser implements ITreeParsing
 				;
 			}
 		}
+		else
+			log.error("Unsupported URI type for input file in \"" + sourceURI + "\"");
 	}
 	
 	void process()
 	{
-		String line = null;
-		
-		while ((line = getLine()) != null)
-		{
-			
-		}
-	}
-	
-	String getLine()
-	{
-		String line = null;
+		SAXParserFactory parserFactory = SAXParserFactory.newInstance();
 		
 		try
 		{
-			line = file.readLine();
+			javax.xml.parsers.SAXParser parser = parserFactory.newSAXParser();
+			parser.parse(convertedFilename, new HPCToolkitXMLParser());
 		}
-		catch (IOException e)
+		catch (SAXException e)
 		{
-			;
+			log.error("Error parsing converted file: " + convertedFilename + "\n" + e.getMessage());
+			e.printStackTrace();
 		}
-		
-		return line;
+		catch (Exception e)
+		{
+			log.error("Error parsing converted file: " + convertedFilename + "\n" + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 	
 	void writeStreamToFile(InputStream is, String filename) throws IOException

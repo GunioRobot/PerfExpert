@@ -4,8 +4,8 @@ import org.apache.log4j.Logger;
 
 public abstract class AParser
 {
-	String sourceURI = null;
-	Logger log = Logger.getLogger (AParser.class);
+	protected String sourceURI = null;
+	private static Logger log = Logger.getLogger (AParser.class);
 
 	public enum ParseMethod
 	{
@@ -33,9 +33,6 @@ public abstract class AParser
 			log.error("Selected parse method [" + method + "] is not supported by " + this.getClass().getCanonicalName());
 			return;
 		}
-		
-		log.debug("Beginning to parse \"" + sourceURI + "\"");
-		parse();
 	}
 
 	// Standard file:// or data:// -based URI
