@@ -1,13 +1,16 @@
 package edu.utexas.tacc.perfexpert;
 
-public class PerfExpert {
+import org.apache.log4j.Logger;
 
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
+import edu.utexas.tacc.perfexpert.parsing.AParser;
+import edu.utexas.tacc.perfexpert.parsing.HPCToolkitParser;
 
+public class PerfExpert
+{
+	public static void main(String[] args) throws Exception
+	{
+		Logger log = Logger.getLogger( PerfExpert.class );
+		
+		HPCToolkitParser parser = new HPCToolkitParser("file:///tmp/experiment.xml");
 	}
-
 }

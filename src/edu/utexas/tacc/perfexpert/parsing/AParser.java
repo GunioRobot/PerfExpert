@@ -1,8 +1,11 @@
 package edu.utexas.tacc.perfexpert.parsing;
 
+import org.apache.log4j.Logger;
+
 public abstract class AParser
 {
 	String sourceURI = null;
+	Logger log = Logger.getLogger (AParser.class);
 
 	public enum ParseMethod
 	{
@@ -15,19 +18,23 @@ public abstract class AParser
 		;
 	}
 
-	public AParser(String sourceURI) throws Exception
+	public AParser(String sourceURI)
 	{
 		// Using TREE-parsing as default
 		this(sourceURI, ParseMethod.TREE);
 	}
 
-	public AParser(String sourceURI, ParseMethod method) throws Exception
+	public AParser(String sourceURI, ParseMethod method)
 	{
 		// Shortcut
 		setSourceURI(sourceURI);
 		if (setParseMethod(method) == false)
-			throw new Exception("Selected parse method [" + method + "] is not supported by " + this.getClass().getCanonicalName());
+		{
+			log.error("Selected parse method [" + method + "] is not supported by " + this.getClass().getCanonicalName());
+			return;
+		}
 		
+		log.debug("Beginning to parse \"" + sourceURI + "\"");
 		parse();
 	}
 
@@ -41,5 +48,5 @@ public abstract class AParser
 	public abstract boolean setParseMethod(ParseMethod method);
 	
 	// Start parsing
-	public abstract void parse() throws Exception;
+	public abstract void parse();
 }
