@@ -5,6 +5,11 @@ import java.util.LinkedHashSet;
 
 public class ExperimentConfigManager extends AConfigManager
 {
+	public ExperimentConfigManager(String sourceURI)
+	{
+		super(sourceURI);
+	}
+	
 	public ArrayList<String> getPerfCounterList()
 	{
 		// Use a set, then convert to an ArrayList
@@ -27,17 +32,24 @@ public class ExperimentConfigManager extends AConfigManager
 	}
 	
 	// Returns a list with strings of the form: -e PAPI_TOT_CYC:13343242 -e PAPI_TOT_INS:3454353 ...
-	public ArrayList<String> getExperimentParameters()
+	public String [] getExperimentParameters()
 	{
-		ArrayList<String> params = new ArrayList<String>(4);
+		int experiments = 0;
+		for (Object key : props.keySet())
+		{
+			String sKey = (String) key;
+			if (sKey.startsWith("experiment."))
+				experiments++;
+		}
 
+		String [] params = new String [experiments];
 		for (Object key : props.keySet())
 		{
 			String sKey = (String) key;
 			if (sKey.startsWith("experiment."))
 			{
 				// Get the number in the second half of the key
-				int expNumber = Integer.parseInt(sKey.split(".")[1]);
+				int expNumber = Integer.parseInt(sKey.split("\\.")[1]);
 				String value = props.getProperty(sKey);
 
 				// Get the formatted string with "-e" before each counter:frequency pair
@@ -47,13 +59,21 @@ public class ExperimentConfigManager extends AConfigManager
 
 				log.debug("Adding new experiment parameter (" + (expNumber-1) + ") to list: \n" + expParam);
 				if (expNumber > 0)
-					params.add(expNumber-1, expParam);
+					params [expNumber-1] = expParam;
 			}
 		}
 
-		if (params.size() == 0)
+		if (params.length == 0)
 			log.debug("Resulting configuration loaded from " + sourceURI + " has zero entries. Is this expected?");
 
 		return params;
+	}
+
+	public int getSamplingFrequency(String perfCounter)
+	{
+		if (perfCounter.startsWith("PAPI_"))
+			return Integer.parseInt(props.getProperty(perfCounter));
+		
+		return 0;
 	}
 }

@@ -1,8 +1,7 @@
 package edu.utexas.tacc.perfexpert;
 
 import org.apache.log4j.Logger;
-
-import edu.utexas.tacc.perfexpert.configuration.MachineConfigManager;
+import edu.utexas.tacc.perfexpert.parsing.hpctoolkit.HPCToolkitParser;
 
 public class PerfExpert
 {
@@ -10,7 +9,8 @@ public class PerfExpert
 	{
 		Logger log = Logger.getLogger( PerfExpert.class );
 		log.info("Hello, World!");
-		
-		MachineConfigManager machineConfig = new MachineConfigManager();
+
+		HPCToolkitParser parser = new HPCToolkitParser("file:///home/klaus/temp/perfexpert/experiment.xml");
+		parser.parse();
 	}
 }

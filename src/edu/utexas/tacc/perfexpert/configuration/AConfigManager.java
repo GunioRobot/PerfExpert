@@ -13,10 +13,25 @@ public abstract class AConfigManager
 	protected Properties props = new Properties();
 	Logger log = Logger.getLogger( AConfigManager.class );
 	
+	AConfigManager()
+	{
+		;
+	}
+	
+	AConfigManager(String sourceURI)
+	{
+		this.sourceURI = sourceURI;
+	}
+	
 	// Standard file:// or data:// -based URI
 	public void setSourceURI(String sourceURI)
 	{
 		this.sourceURI = sourceURI;
+	}
+	
+	public Properties getProperties()
+	{
+		return props;
 	}
 	
 	// To parse the configuration source now

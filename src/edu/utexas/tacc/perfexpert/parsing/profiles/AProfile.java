@@ -2,7 +2,7 @@ package edu.utexas.tacc.perfexpert.parsing.profiles;
 
 public abstract class AProfile
 {
-	String codeSectionInfo = null;
+	protected String codeSectionInfo = null;
 	
 	// Which code does this profile belong to?
 	public String getCodeSectionInfo()

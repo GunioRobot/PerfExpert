@@ -1,0 +1,89 @@
+options
+{
+	LOOKAHEAD=2;
+}
+PARSER_BEGIN(MathParser)
+public class MathParser
+{
+/*
+	public static void main(String args[]) throws ParseException 
+	{
+		System.out.println ("*" + parse("2+PAPI_TOT_CYC") + "*");
+	}
+*/
+	static double parse(String input) throws ParseException
+	{
+		java.io.StringReader sr = new java.io.StringReader(input);
+		java.io.Reader r = new java.io.BufferedReader(sr);
+		MathParser parser = new MathParser(sr);
+		return parser.parseOneLine();
+	}
+}
+PARSER_END(MathParser)
+SKIP :
+{
+	" "
+|	"\r"
+|	"\t"
+|	"\n"
+}
+TOKEN:
+{
+	< NUMBER: (<DIGIT>)+ ( "." (<DIGIT>)+ )? >
+|	< DIGIT: ["0"-"9"] >
+|	< EOL: ";" >
+|	< SYMBOL: (["A"-"Z","_"])+ >
+}
+double parseOneLine():
+{
+	double a;
+}
+{
+	a=expr() <EOF>		{ return a; }
+|	<EOF>			{ return 0; }
+}
+double expr():
+{
+	double a;
+	double b;
+}
+{
+	a=term()
+	(
+		"+" b=expr()	{ a += b; }
+	|	"-" b=expr()	{ a -= b; }
+	)*
+				{ return a; }
+}
+double term():
+{
+	double a;
+	double b;
+}
+{
+	a=unary()
+	(
+		"*" b=term()	{ a *= b; }
+	|	"/" b=term()	{ a /= b; }
+	)*
+				{ return a; }
+}
+double unary():
+{
+	double a;
+}
+{
+	"-" a=element()		{ return -a; }
+|	a=element()		{ return a; }
+}
+double element():
+{
+	Token t;
+	double a;
+}
+{
+	t=<NUMBER>		{ return Double.parseDouble(t.toString()); }
+|	t=<SYMBOL>		{ return 100.0; }
+|	"(" a=expr() ")"	{ return a; }
+}
+

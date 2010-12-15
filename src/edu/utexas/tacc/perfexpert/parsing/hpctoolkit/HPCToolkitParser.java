@@ -17,14 +17,14 @@ import org.xml.sax.SAXException;
 import edu.utexas.tacc.perfexpert.parsing.AParser;
 import edu.utexas.tacc.perfexpert.parsing.ITreeParsing;
 import edu.utexas.tacc.perfexpert.parsing.profiles.AProfile;
-import edu.utexas.tacc.perfexpert.parsing.profiles.GenericProfile;
+import edu.utexas.tacc.perfexpert.parsing.profiles.HPCToolkitProfile;
 
 public class HPCToolkitParser extends AParser implements ITreeParsing
 {
 	private static Logger log = Logger.getLogger( HPCToolkitParser.class );
 	
 	RandomAccessFile file;
-	ArrayList<GenericProfile> profiles = new ArrayList<GenericProfile>();
+	ArrayList<HPCToolkitProfile> profiles = new ArrayList<HPCToolkitProfile>();
 	
 	final String JAVA_PATH = "/usr/bin/java";
 	final String LIB_DIR = "/home/klaus/temp/perfexpert/lib";
