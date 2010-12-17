@@ -5,13 +5,7 @@ options
 PARSER_BEGIN(MathParser)
 public class MathParser
 {
-/*
-	public static void main(String args[]) throws ParseException 
-	{
-		System.out.println ("*" + parse("2+PAPI_TOT_CYC") + "*");
-	}
-*/
-	static double parse(String input) throws ParseException
+	public static double parse(String input) throws ParseException
 	{
 		java.io.StringReader sr = new java.io.StringReader(input);
 		java.io.Reader r = new java.io.BufferedReader(sr);

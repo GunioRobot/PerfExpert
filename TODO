@@ -1,16 +1,16 @@
 Rough list of items yet to be implemented. Plan to update as items are finished or as bugs are discovered:
 
-Currently the Perl code does:
-1. Maintaining configuration constants
-2. List of performance counters to measure
-3. Convert the HPCToolkit file to pure XML without DTDs and other crap
-4. Verify the first few lines of the file to contain standard tags (and also later through the document)
-5. Parse list of metrics and map them to PerfExpert's list of metrics from (2)
-6. Parse each metric line
-7. If necessary, parse metrics from the second file (for diffing)
-8. Sort code items by priority (percentage of total running time)
+Steps in the Perl code, with status of migration to Java:
+[DONE] 1. Maintaining configuration constants
+[DONE] 2. List of performance counters to measure
+[DONE] 3. Convert the HPCToolkit file to pure XML without DTDs
+[PENDING] 4. Verify the first few lines of the file to contain standard tags (and also later through the document) - Need XML Schema
+[DONE] 5. Parse list of metrics and map them to PerfExpert's list of metrics from (2)
+[DONE] 6. Parse each metric line
+[DONE] 7. If necessary, parse metrics from the second file (for diffing)
+[DONE] 8. Sort code items by priority (percentage of total running time)
 9. For each discovered metric:
-  a. Ignore if relative importance is lower than threshold
+  [DONE] a. Ignore if relative importance is lower than threshold
   b. Compute LCPIs
   c. Print bars
 
@@ -18,6 +18,5 @@ Code components: [edu.utexas.tacc.perfexpert]
  - Configuration
  - Validation of input file
  - Parsers for metrics
- - Aggregation of metrics (LCPI computation)
  - Presentation
  - Logging framework

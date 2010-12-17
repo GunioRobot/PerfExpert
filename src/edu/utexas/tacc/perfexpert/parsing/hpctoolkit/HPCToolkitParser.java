@@ -1,13 +1,12 @@
 package edu.utexas.tacc.perfexpert.parsing.hpctoolkit;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
-import java.util.ArrayList;
+import java.util.List;
 
 import javax.xml.parsers.SAXParserFactory;
 
@@ -15,53 +14,31 @@ import org.apache.log4j.Logger;
 import org.xml.sax.SAXException;
 
 import edu.utexas.tacc.perfexpert.parsing.AParser;
-import edu.utexas.tacc.perfexpert.parsing.ITreeParsing;
-import edu.utexas.tacc.perfexpert.parsing.profiles.AProfile;
-import edu.utexas.tacc.perfexpert.parsing.profiles.HPCToolkitProfile;
+import edu.utexas.tacc.perfexpert.parsing.profiles.hpctoolkit.HPCToolkitProfile;
 
-public class HPCToolkitParser extends AParser implements ITreeParsing
+public class HPCToolkitParser extends AParser
 {
-	private static Logger log = Logger.getLogger( HPCToolkitParser.class );
+	private Logger log = Logger.getLogger( HPCToolkitParser.class );
 	
 	RandomAccessFile file;
-	ArrayList<HPCToolkitProfile> profiles = new ArrayList<HPCToolkitProfile>();
+	List<HPCToolkitProfile> profiles = null;
 	
 	final String JAVA_PATH = "/usr/bin/java";
-	final String LIB_DIR = "/home/klaus/temp/perfexpert/lib";
+	final String LIB_DIR = System.getProperty("user.home") + "/temp/perfexpert/lib";
 	final String classPath = LIB_DIR + "/hpcdata.jar:" + LIB_DIR + "/org.apache.xerces_2.9.0.v200909240008.jar:" + LIB_DIR + "/org.eclipse.jface_3.5.1.M20090826-0800.jar";
 	final String className = "edu.rice.cs.hpc.data.framework.Application";
 
-	String convertedFilename;
-	public HPCToolkitParser(String sourceURI)
+	public HPCToolkitParser(double threshold, String sourceURI)
 	{
-		super(sourceURI);
+		super(threshold, sourceURI);
 	}
 	
-	public HPCToolkitParser(String sourceURI, ParseMethod method)
+	public List<HPCToolkitProfile> getAllProfiles()
 	{
-		super(sourceURI, method);
-	}
-	
-	@Override
-	public AProfile[] getAllProfiles()
-	{
-		// TODO Auto-generated method stub
-		return null;
+		return profiles;
 	}
 
-	@Override
-	public boolean setParseMethod(ParseMethod method)
-	{
-		// Currently only Tree-parsing enabled
-		if (method == ParseMethod.TREE)
-			return true;
-		
-		log.debug("setParseMethod() not called with unsupported parsing method. Only tree-parsing supported.");
-		return false;
-	}
-
-	@Override
-	public void parse()
+	public List<HPCToolkitProfile> parse()
 	{
 		log.debug("Beginning to parse \"" + sourceURI + "\"");
 		
@@ -70,13 +47,13 @@ public class HPCToolkitParser extends AParser implements ITreeParsing
 		if (sourceURI.substring(0, fileIndex).equals("file"))
 		{
 			String filename = sourceURI.substring("file://".length());
-			convertedFilename = filename + ".converted";
+			String convertedFilename = filename + ".converted";
 			
 			// Check if File exists
 			if (!new File (filename).exists())
 			{
 				log.error("Input XML file does not exist: " + filename);
-				return;
+				return profiles;
 			}
 
 			// Convert to simpler XML format to be used with parsing
@@ -96,70 +73,75 @@ public class HPCToolkitParser extends AParser implements ITreeParsing
 				if (new String(err).contains("Exception"))
 				{
 					log.error("Error converting input file \"" + filename + "\":\n" + err);
-					return;
+					return profiles;
 				}
 			}
 			catch (IOException e)
 			{
 				log.error("Conversion failed: " + e);
 				e.printStackTrace();
-				return;
+				return profiles;
 			}
 			
-			// Conversion writes messages to standard error, so printing them here
-			log.info(err);
-			
-			// Set up stream
-			try
-			{
-				file = new RandomAccessFile(filename, "r");
-			}
-			catch (FileNotFoundException e)
-			{
-				log.info("Could not find input file: " + filename);
-				return;
-			}
-
 			// Get the big wheels turning...
-			process();			
-			
-			// Read profiles and add to collection (profiles)
-			
-			// Close open stream
-			try
-			{
-				file.close();
-			} catch (IOException e)
-			{
-				// Ignore
-				;
-			}
+			// Parse the XML now and load profiles
+			process(convertedFilename);			
 		}
 		else
 			log.error("Unsupported URI type for input file in \"" + sourceURI + "\"");
-	}
-	
-	void process()
-	{
-		SAXParserFactory parserFactory = SAXParserFactory.newInstance();
 		
+		return profiles;
+	}
+
+	void doXMLParsing(String filename)
+	{
+		HPCToolkitXMLParser xmlParser = new HPCToolkitXMLParser();
+		xmlParser.setThreshold(threshold);
+
+		SAXParserFactory parserFactory = SAXParserFactory.newInstance();
+
 		try
 		{
 			javax.xml.parsers.SAXParser parser = parserFactory.newSAXParser();
-			parser.parse(convertedFilename, new HPCToolkitXMLParser());
+			parser.parse(filename, xmlParser);
 		}
 		catch (SAXException e)
 		{
-			log.error("Error parsing converted file: " + convertedFilename + "\n" + e.getMessage());
+			log.error("Error parsing converted file: " + filename + "\n" + e.getMessage());
 			e.printStackTrace();
 		}
 		catch (Exception e)
 		{
-			log.error("Error parsing converted file: " + convertedFilename + "\n" + e.getMessage());
+			log.error("Error parsing converted file: " + filename + "\n" + e.getMessage());
 			e.printStackTrace();
 		}
+
+		this.profiles = xmlParser.getProfileList(); 
+		log.debug("Recorded " + profiles.size() + " profiles");
 	}
 	
+	void process(String filename)
+	{
+		// Fire up the XML parser and get the list of collected profiles
+		// Profiles are saved from within the method.. Bad design? Likely!
+		doXMLParsing(filename);
+		
+		if (profiles.size() == 0)
+		{
+			log.error("Collected zero profiles from HPCToolkit. Is the input file valid?");
+			return;
+		}
+
+		// Sanity check
+		int indexOfCycles = profiles.get(0).getConstants().getIndexOfCycles();
+		if (indexOfCycles < 0)
+		{
+			log.error("Could not find PAPI_TOT_CYC in the list of performance counters that HPCToolkit recorded. Is the input file valid?");
+			return;
+		}
+	}
+
+	// Used while saving the output of the conversion
 	void writeStreamToFile(InputStream is, String filename) throws IOException
 	{
 		File outputFile = new File(filename);

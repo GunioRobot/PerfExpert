@@ -2,6 +2,7 @@ package edu.utexas.tacc.perfexpert.parsing.hpctoolkit;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -9,75 +10,138 @@ import org.apache.log4j.Logger;
 import org.xml.sax.Attributes;
 import org.xml.sax.helpers.DefaultHandler;
 
-import edu.utexas.tacc.perfexpert.parsing.profiles.HPCToolkitProfile;
+import edu.utexas.tacc.perfexpert.parsing.profiles.hpctoolkit.HPCToolkitProfile;
+import edu.utexas.tacc.perfexpert.parsing.profiles.hpctoolkit.HPCToolkitProfileConstants;
 
 public class HPCToolkitXMLParser extends DefaultHandler
 {
 	Logger log = Logger.getLogger( HPCToolkitXMLParser.class );
 
-	boolean skip = false;
+	boolean inCallSite = false;
 	boolean aggregateRecorded = false;
 	
 	int metrics = 0;
+	double threshold = 0.1;
+	String filename = null;
 	HPCToolkitProfile profile;
+	String loadedModule = null;
+
+	Stack<String> procedureStack = new Stack<String>();
 	
-	List<HPCToolkitProfile> profileList = new ArrayList<HPCToolkitProfile>();
+	// Arbitrarily  selected default initial capacity of 50
+	List<HPCToolkitProfile> profileList = new ArrayList<HPCToolkitProfile>(50);
+	HPCToolkitProfileConstants profileConstants = new HPCToolkitProfileConstants();
+	
+	public void setThreshold(double threshold)
+	{
+		this.threshold = threshold;
+	}
 
 	@Override
 	public void startElement(String uri, String localName, String qName, Attributes attr)
 	{
-		if (skip)	// Everything to be ignored till we see a particular ending element
-			return;
-		
-		// If it a metric itself, record code section and add to Profile values
-		if (qName.equals("M"))
+		if (inCallSite)	// Everything to be ignored till we see a ending "C" element
 		{
-			int index = Integer.parseInt(attr.getValue("n"));
-			double value = Double.parseDouble(attr.getValue("v"));
-
-			log.debug("Found an \"M\" element");
-			if (profile == null)
-			{
-				log.debug("Starting to record in a new HPCToolkitProfile object");
-				profile = new HPCToolkitProfile();
-			}
-
-			if (aggregateRecorded == false)
-			{
-				log.debug("This metric marks the beginning of recording the aggregate information");
-				profile.setCodeSectionInfo("Aggregate");
-				aggregateRecorded = true;
-			}
-
-			profile.setMetric(index, value);
+			log.debug("Skipping element \"" + qName + "\" because we are currently within a callsite (C) element");
 			return;
 		}
-
-		// The element we came across was not an M, so if the aggregate metrics are still hanging around,
-		// flush them to the profile list
-		if (profile != null)
-			profileList.add(profile);
-		
-		// Reset the object so that subsequent elements start afresh
-		profile = null;
 
 		// Procedure
 		if (qName.equals("P"))
 		{
+			aggregateRecorded = true;
+			setAggregateCyclesFromRootProfile();
+
+			int lineNumber = Integer.parseInt(attr.getValue("l"));
 			String procedureName = attr.getValue("n");
-			log.debug("Found a \"P\" element for \"" + procedureName + "\"");
-			log.debug("Starting to record in a new HPCToolkitProfile object");
-			profile = new HPCToolkitProfile();
-			profile.setCodeSectionInfo(procedureName);
+			
+			procedureStack.push(procedureName);
+			String codeSection = formatCodeSection(lineNumber, true);
+
+			log.debug("Found a \"P\" element for \"" + procedureName + "\"" + codeSection + ", starting to record a new Profile object");
+
+			profile = new HPCToolkitProfile(profileConstants);
+			profile.setCodeSectionInfo("Function " + procedureName + "()" + codeSection);
+			profileList.add(profile);
+			return;
+		}
+
+		// Loop
+		if (qName.equals("L"))
+		{
+			aggregateRecorded = true;
+			setAggregateCyclesFromRootProfile();
+
+			int lineNumber = Integer.parseInt(attr.getValue("l"));
+			String codeSection = formatCodeSection(lineNumber, false);
+
+			log.debug("Found an \"L\" element for" + codeSection + ", starting to record a new Profile object");
+
+			profile = new HPCToolkitProfile(profileConstants);
+			profile.setCodeSectionInfo("Loop" + codeSection);
+			profileList.add(profile);
 			return;
 		}
 		
-		// Don't process F (file), LM (loaded module) or S (statement) elements
-		if (qName.equals("F") || qName.equals("LM") || qName.equals("S"))
+		// If it a metric itself, record code section and add to Profile values
+		if (qName.equals("M"))
+		{
+			if (aggregateRecorded == true && profile == null)
+			{
+				log.debug("Found an \"M\" element but ignored, looks like it was under an LM, S, or F");
+				return;	// Ignore because this metric must be under an LM or S or F
+			}
+
+			log.debug("Found an \"M\" element");
+			if (aggregateRecorded == false && profile != null)
+				log.warn("Some other metric seems to have been recorded before the aggregate data was collected, trying to proceeed as normal...");
+
+			int index = Integer.parseInt(attr.getValue("n"));
+			double value = Double.parseDouble(attr.getValue("v"));
+	
+			// Check if this is aggregated program information
+			if (aggregateRecorded == false && profile == null)
+			{
+				log.debug("This metric marks the beginning of recording the aggregate information");
+
+				profile = new HPCToolkitProfile(profileConstants);
+				profile.setCodeSectionInfo("Aggregate");
+				profileList.add(profile);
+	
+				aggregateRecorded = true;
+			}
+
+			profile.setMetric(index, value);
+
+			// The above block (and other similar blocks) can be optimized for performance but leaving to to the compiler
+			// Trying to keep the code readable
+
+			return;
+		}
+
+		// Record filename (bonus!)
+		if (qName.equals("F"))
+		{
+			filename = attr.getValue("n");
+			log.debug("Found a new \"F\" element for \"" + filename + "\"");
+			return;
+		}
+
+		if (qName.equals("LM"))
+		{
+			loadedModule = attr.getValue("n");
+			log.debug("Found new loaded module " + loadedModule);
+			return;
+		}
+
+		// Don't process S (statement) elements
+		if (qName.equals("S"))
 		{
 			aggregateRecorded = true;
+			setAggregateCyclesFromRootProfile();
+			profile = null;
 			
-			log.debug("Skipping element \"" + qName + "\"");
+			log.debug("Not processing \"S\" element");
 			return;
 		}
 		
@@ -85,9 +149,11 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		if (qName.equals("C"))
 		{
 			aggregateRecorded = true;
+			setAggregateCyclesFromRootProfile();
+			profile = null;
 
 			log.debug("Found a \"C\" element, skipping till corresponding ending element is found");
-			skip = true;
+			inCallSite = true;
 			
 			return;
 		}
@@ -95,19 +161,18 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		// If it is an entry from the metric table, record the name and the index
 		if (qName.equals("Metric"))
 		{
-			String regex = "^\\d+\\.(\\w+)\\.\\[[^\\]]*\\] \\((\\w)\\)$";
 			String metricName = attr.getValue("n");
+
+			String regex = "^\\d+\\.(\\w+)\\.\\[[^\\]]*\\] \\((\\w)\\)$";
 			Pattern p = Pattern.compile(regex);
 			Matcher m = p.matcher(metricName);
 			
 			if (m.find())
 			{
-				int index = Integer.parseInt(attr.getValue("i"));
+				int HPCToolkitIndex = Integer.parseInt(attr.getValue("i"));
 				String revisedMetricName = m.group(1) + (m.group(2).equals("I") ? "_I" : "");
 
-				log.debug("Recording metric [" + index + "]: " + revisedMetricName);
-				HPCToolkitProfile.getPerfCounterTranslation().put(revisedMetricName, index);
-				metrics++;
+				profileConstants.registerMetric(HPCToolkitIndex, revisedMetricName);
 			}
 			else
 				log.debug("Encountered \"Metric\" element that did not match the regex: " + regex + "\n"
@@ -120,21 +185,91 @@ public class HPCToolkitXMLParser extends DefaultHandler
 	@Override
 	public void endElement(String uri, String localName, String qName)
 	{
-		// If the MetricTable element has ended, it means we have parsed all metrics.
-		// Hence we can now pass the metric count to HPCToolkitProfile
-		if (qName.equals("MetricTable"))
+		// If it is a closing file element, reset the filename
+		if(qName.equals("F"))
 		{
-			log.debug("Ending \"MetricTable\" element found, setting metric count for HPCToolkitProfile to " + metrics);
-			HPCToolkitProfile.setMetricCount(metrics);
+			log.debug("Found ending \"F\" element");
+			filename = null;
+			return;
 		}
-		
+
+		// If it is a closing loaded-module element, reset the filename
+		if(qName.equals("LM"))
+		{
+			log.debug("Found ending \"LM\" element");
+			loadedModule = null;
+			return;
+		}
+
+		// If it is a procedure or a loop that has ended, reset the Profile object so that we don't (even by mistake) incorrectly record data
+		if (qName.equals("P") || qName.equals("L"))
+		{
+			log.debug("Found ending \"" + qName + "\" element");
+			if (qName.equals("P"))
+				procedureStack.pop();
+
+			profile = null;
+			return;
+		}
+
 		// If ending C element, start processing again as normal
 		if (qName.equals("C"))
 		{
 			aggregateRecorded = true;
+			setAggregateCyclesFromRootProfile();
 
 			log.debug("Found an ending \"C\" element, resuming parsing as normal");
-			skip = false;
+			inCallSite = false;
+			return;
 		}
+	}
+	
+	@Override
+	public void endDocument()
+	{
+		// If there was only one useful metric in the input script, we would surely not have set the aggregate cycles,
+		// which are used for calculation of importance, hence an additional call
+		
+		setAggregateCyclesFromRootProfile();
+	}
+	
+	void setAggregateCyclesFromRootProfile()
+	{
+		if (profileList.size() == 0)
+		{
+			log.error("Aggregate cycles are being adjusted when there is nothing in the profile list");
+			return;
+		}
+
+		if (profileConstants.getAggregateCycles() == 0)
+			profileConstants.setAggregateCycles((long) profileList.get(0).getMetric(profileConstants.getIndexOfCycles()));
+		
+		// Check if the topmost item in the list of profiles is "important"
+		// If not, chuck it out
+		int lastIndex = profileList.size()-1;
+		if (profileList.get(lastIndex).getImportance() < threshold)
+			profileList.remove(lastIndex);
+	}
+
+	// Formats the given information into a string of the form: [ in procedure foo()] at foobar.c:90
+	String formatCodeSection(int lineNumber, boolean newProcedure)
+	{
+		String location;
+		String shortModuleName = loadedModule.substring(loadedModule.lastIndexOf('/')+1);
+		String procedureName = procedureStack.isEmpty() ? null : procedureStack.peek();		
+
+		if (lineNumber == 0 && procedureName == null && (filename == null || filename.equals("~unknown-file~"))) 
+			location = "~unknown-location~";
+		else if (filename != null && !filename.equals("~unknown-file~") && lineNumber != 0)
+			location = (newProcedure == false ? (procedureName != null ? " in function " + procedureName + "()" : "") : "") + " at " + filename + ":" + lineNumber;
+		else location = (lineNumber != 0) ? " line " + lineNumber : "" + (newProcedure == false ? (procedureName != null ? " in procedure " + procedureName + "()" : "") : "") + (filename != null && !filename.equals("~unknown-file~") ? " in file \"" + filename + "\"" : "");
+		
+		return location + " in " + shortModuleName;
+	}
+
+	// So that we can retrieve all of the collected information at the end of the parsing
+	List<HPCToolkitProfile> getProfileList()
+	{
+		return profileList;
 	}
 }
