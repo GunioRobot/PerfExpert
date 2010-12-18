@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.log4j.Logger;
 
@@ -73,6 +74,21 @@ public class HPCToolkitProfileConstants
 
 			log.debug("Registered new metric " + metricName + " at location: " + discoveredMetrics);
 			discoveredMetrics++;
+		}
+	}
+
+	public void setUpLCPITranslation(Properties lcpiProperties)
+	{
+		// This is just setting up a mapping between LCPI names and their corresponding index in the double array
+		int LCPICount = 0;
+		for (Object key : lcpiProperties.keySet())
+		{
+			String LCPI = (String) key;
+			if (!LCPI.equals("version"))	// Ignore version string
+			{
+				lcpiTranslation.put((String) key, LCPICount);
+				LCPICount++;
+			}
 		}
 	}
 }

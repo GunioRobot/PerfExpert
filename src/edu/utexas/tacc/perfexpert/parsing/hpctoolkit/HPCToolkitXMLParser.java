@@ -2,6 +2,7 @@ package edu.utexas.tacc.perfexpert.parsing.hpctoolkit;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,6 +22,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 	boolean aggregateRecorded = false;
 	
 	int metrics = 0;
+	Properties LCPIConfig;
 	double threshold = 0.1;
 	String filename = null;
 	HPCToolkitProfile profile;
@@ -36,6 +38,17 @@ public class HPCToolkitXMLParser extends DefaultHandler
 	{
 		this.threshold = threshold;
 	}
+	
+	public void setLCPIConfig(Properties LCPIConfig)
+	{
+		this.LCPIConfig = LCPIConfig;
+	}
+	
+	@Override
+	public void startDocument()
+	{
+		profileConstants.setUpLCPITranslation(LCPIConfig);
+	}
 
 	@Override
 	public void startElement(String uri, String localName, String qName, Attributes attr)
@@ -49,6 +62,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		// Procedure
 		if (qName.equals("P"))
 		{
+			profile = null;
 			aggregateRecorded = true;
 			setAggregateCyclesFromRootProfile();
 
@@ -69,6 +83,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		// Loop
 		if (qName.equals("L"))
 		{
+			profile = null;
 			aggregateRecorded = true;
 			setAggregateCyclesFromRootProfile();
 
@@ -122,6 +137,10 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		// Record filename (bonus!)
 		if (qName.equals("F"))
 		{
+			profile = null;
+			aggregateRecorded = true;
+			setAggregateCyclesFromRootProfile();
+
 			filename = attr.getValue("n");
 			log.debug("Found a new \"F\" element for \"" + filename + "\"");
 			return;
@@ -129,6 +148,10 @@ public class HPCToolkitXMLParser extends DefaultHandler
 
 		if (qName.equals("LM"))
 		{
+			profile = null;
+			aggregateRecorded = true;
+			setAggregateCyclesFromRootProfile();
+
 			loadedModule = attr.getValue("n");
 			log.debug("Found new loaded module " + loadedModule);
 			return;
@@ -137,9 +160,9 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		// Don't process S (statement) elements
 		if (qName.equals("S"))
 		{
+			profile = null;
 			aggregateRecorded = true;
 			setAggregateCyclesFromRootProfile();
-			profile = null;
 			
 			log.debug("Not processing \"S\" element");
 			return;
@@ -148,9 +171,9 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		// If it is a C (callsite), ignore till we see an ending C element
 		if (qName.equals("C"))
 		{
+			profile = null;
 			aggregateRecorded = true;
 			setAggregateCyclesFromRootProfile();
-			profile = null;
 
 			log.debug("Found a \"C\" element, skipping till corresponding ending element is found");
 			inCallSite = true;
@@ -188,6 +211,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		// If it is a closing file element, reset the filename
 		if(qName.equals("F"))
 		{
+			profile = null;
 			log.debug("Found ending \"F\" element");
 			filename = null;
 			return;
@@ -196,6 +220,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		// If it is a closing loaded-module element, reset the filename
 		if(qName.equals("LM"))
 		{
+			profile = null;
 			log.debug("Found ending \"LM\" element");
 			loadedModule = null;
 			return;
@@ -215,8 +240,10 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		// If ending C element, start processing again as normal
 		if (qName.equals("C"))
 		{
+			profile = null;
 			aggregateRecorded = true;
-			setAggregateCyclesFromRootProfile();
+			// Should the following line be uncommented?
+			// setAggregateCyclesFromRootProfile();
 
 			log.debug("Found an ending \"C\" element, resuming parsing as normal");
 			inCallSite = false;
@@ -242,13 +269,30 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		}
 
 		if (profileConstants.getAggregateCycles() == 0)
+		{
+			// Adjust the aggregate cycles and recalculate importance of root profile (aggregate), which will be 1.0
 			profileConstants.setAggregateCycles((long) profileList.get(0).getMetric(profileConstants.getIndexOfCycles()));
-		
+			
+			HPCToolkitProfile rootProfile = profileList.get(0);
+			rootProfile.setImportance(1.0);
+		}
+
 		// Check if the topmost item in the list of profiles is "important"
 		// If not, chuck it out
 		int lastIndex = profileList.size()-1;
-		if (profileList.get(lastIndex).getImportance() < threshold)
+		HPCToolkitProfile lastProfile = profileList.get(lastIndex);
+		
+		if (lastProfile.getImportance() == -1)
+		{
+			// Skip this one for now because its importance has not yet been calculated
+			return;
+		}
+		
+		if (lastProfile.getImportance() < threshold)
+		{
+			log.debug("Removing profile \"" + lastProfile.getCodeSectionInfo() + "\" because its importance is " + lastProfile.getImportance() + " and threshold is " + threshold);
 			profileList.remove(lastIndex);
+		}
 	}
 
 	// Formats the given information into a string of the form: [ in procedure foo()] at foobar.c:90

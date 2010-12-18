@@ -3,14 +3,53 @@ options
 	LOOKAHEAD=2;
 }
 PARSER_BEGIN(MathParser)
+package edu.utexas.tacc.perfexpert.configuration.hpctoolkit.mathparser;
+
+import java.util.Properties;
+
+import edu.utexas.tacc.perfexpert.parsing.profiles.hpctoolkit.HPCToolkitProfile;
+
+import org.apache.log4j.Logger;
+
 public class MathParser
 {
-	public static double parse(String input) throws ParseException
+	public MathParser()
+	{
+		//java.io.StringReader sr = new java.io.StringReader(input);
+		//java.io.Reader r = new java.io.BufferedReader(sr);
+		this(new java.io.BufferedReader(new java.io.StringReader("")));
+	}
+
+	static Logger log = Logger.getLogger( MathParser.class );
+	public double parse(String input, HPCToolkitProfile profile, Properties machineConfig) throws ParseException
 	{
 		java.io.StringReader sr = new java.io.StringReader(input);
 		java.io.Reader r = new java.io.BufferedReader(sr);
-		MathParser parser = new MathParser(sr);
-		return parser.parseOneLine();
+		// MathParser parser = new MathParser(r);
+		ReInit(r);
+		return parseOneLine(profile, machineConfig);
+	}
+
+	private static double getSymbolValue(String token, HPCToolkitProfile profile, Properties machineConfig)
+	{
+		// Check in the profile (for perf counter values) and in the machine configuration (for machine constants like BR_lat)
+		// If not present in both, log an error and return 0;
+		
+		Integer index = profile.getConstants().getPerfCounterTranslation().get(token);
+		if (index == null)
+		{
+			String machineValue = machineConfig.getProperty(token); 
+			if (machineValue == null || machineValue.isEmpty())
+			{
+				// Both empty, throw error
+				log.error("Could not find definition for \"" + token + "\" while parsing LCPI metrics, defaulting to zero");
+				return 0;
+			}
+			else
+				return Double.parseDouble(machineValue);
+		}
+		else
+			return profile.getMetricBasedOnPEIndex(index);
 	}
 }
 PARSER_END(MathParser)
@@ -25,59 +64,58 @@ TOKEN:
 {
 	< NUMBER: (<DIGIT>)+ ( "." (<DIGIT>)+ )? >
 |	< DIGIT: ["0"-"9"] >
-|	< EOL: ";" >
-|	< SYMBOL: (["A"-"Z","_"])+ >
+|	< LETTER: ["A"-"Z"]|["a"-"z"] >
+|	< SYMBOL: ("_"|<LETTER>|<DIGIT>)+ >
 }
-double parseOneLine():
+double parseOneLine(HPCToolkitProfile profile, Properties machineConfig):
 {
 	double a;
 }
 {
-	a=expr() <EOF>		{ return a; }
+	a=expr(profile, machineConfig) <EOF>		{ return a; }
 |	<EOF>			{ return 0; }
 }
-double expr():
+double expr(HPCToolkitProfile profile, Properties machineConfig):
 {
 	double a;
 	double b;
 }
 {
-	a=term()
+	a=term(profile, machineConfig)
 	(
-		"+" b=expr()	{ a += b; }
-	|	"-" b=expr()	{ a -= b; }
+		"+" b=expr(profile, machineConfig)	{ a += b; }
+	|	"-" b=expr(profile, machineConfig)	{ a -= b; }
 	)*
 				{ return a; }
 }
-double term():
+double term(HPCToolkitProfile profile, Properties machineConfig):
 {
 	double a;
 	double b;
 }
 {
-	a=unary()
+	a=unary(profile, machineConfig)
 	(
-		"*" b=term()	{ a *= b; }
-	|	"/" b=term()	{ a /= b; }
+		"*" b=term(profile, machineConfig)	{ a *= b; }
+	|	"/" b=term(profile, machineConfig)	{ a /= b; }
 	)*
 				{ return a; }
 }
-double unary():
+double unary(HPCToolkitProfile profile, Properties machineConfig):
 {
 	double a;
 }
 {
-	"-" a=element()		{ return -a; }
-|	a=element()		{ return a; }
+	"-" a=element(profile, machineConfig)		{ return -a; }
+|	a=element(profile, machineConfig)		{ return a; }
 }
-double element():
+double element(HPCToolkitProfile profile, Properties machineConfig):
 {
 	Token t;
 	double a;
 }
 {
 	t=<NUMBER>		{ return Double.parseDouble(t.toString()); }
-|	t=<SYMBOL>		{ return 100.0; }
-|	"(" a=expr() ")"	{ return a; }
+|	t=<SYMBOL>		{ return getSymbolValue(t.toString(), profile, machineConfig); }
+|	"(" a=expr(profile, machineConfig) ")"	{ return a; }
 }
-
