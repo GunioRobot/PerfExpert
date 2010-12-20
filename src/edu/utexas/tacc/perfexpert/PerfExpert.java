@@ -1,68 +1,67 @@
 package edu.utexas.tacc.perfexpert;
 
+import java.io.File;
 import java.util.List;
 
 import org.apache.log4j.Logger;
 
 import edu.utexas.tacc.perfexpert.configuration.LCPIConfigManager;
 import edu.utexas.tacc.perfexpert.configuration.MachineConfigManager;
-import edu.utexas.tacc.perfexpert.configuration.hpctoolkit.mathparser.MathParser;
+import edu.utexas.tacc.perfexpert.configuration.PerfExpertConfigManager;
 import edu.utexas.tacc.perfexpert.parsing.hpctoolkit.HPCToolkitParser;
 import edu.utexas.tacc.perfexpert.parsing.profiles.hpctoolkit.HPCToolkitProfile;
+import edu.utexas.tacc.perfexpert.presentation.HPCToolkitPresentation;
 
 public class PerfExpert
 {
 	public static void main(String[] args) throws Exception
 	{
 		Logger log = Logger.getLogger( PerfExpert.class );
+		
+		String peConfigLocation = "/opt/apps/perfexpert";
+		if (!new File(peConfigLocation + "/perfexpert.properties").exists())
+		{
+			// Try home dir
+			peConfigLocation = System.getProperty("user.home") + "/.perfexpert";
+			if (!new File(peConfigLocation + "/perfexpert.properties").exists())
+			{
+				// Could not find in the alternate location also, give up
+				log.error("Could not find seed configuration file perfexpert.properties, terminating...");
+				return;
+			}
+		}
+		
+		PerfExpertConfigManager peConfig = new PerfExpertConfigManager("file://" + peConfigLocation + "/perfexpert.properties");
+		peConfig.readConfigSource();
 
-		LCPIConfigManager lcpiConfig = new LCPIConfigManager("file://config/lcpi.properties");
-		lcpiConfig.readConfigSource();
-		
-		MachineConfigManager machineConfig = new MachineConfigManager("file://config/machine.properties");
-		machineConfig.readConfigSource();
-		
-		HPCToolkitParser parser = new HPCToolkitParser(0.1, "file:///home/ashay/temp/perfexpert/sample-inputs/03.xml", lcpiConfig.getProperties());
-		List<HPCToolkitProfile> profiles = parser.parse();
-		if (profiles == null || profiles.size() == 0)
+		String CONFIG_LOCATION = peConfig.getProperties().getProperty("CONFIG_LOCATION");
+		if (CONFIG_LOCATION == null || CONFIG_LOCATION.isEmpty())
+		{
+			log.error("CONFIG_LOCATION was not set in " + peConfigLocation + "/perfexpert.properties, cannot proceed");
 			return;
-
-		// Collections.sort(profiles);
-		for (int i=1; i<profiles.size()-1; i++)
-		{
-			for (int j=i+1; j<profiles.size(); j++)
-			{
-				if (profiles.get(i).getImportance() < profiles.get(j).getImportance())
-				{
-					// Swap
-					HPCToolkitProfile temp = profiles.get(i);
-					profiles.set(i, profiles.get(j));
-					profiles.set(j, temp);
-				}
-			}
 		}
 
-		MathParser mathParser = new MathParser();
-		for (HPCToolkitProfile profile : profiles)
+		String HPCDATA_LOCATION = peConfig.getProperties().getProperty("HPCDATA_LOCATION");
+		if (HPCDATA_LOCATION == null || HPCDATA_LOCATION.isEmpty())
 		{
-			if (profile.getCodeSectionInfo().equals("Aggregate") || profile.getImportance() == -1)
-				continue;
-
-			// Compute each LCPI metric
-			for (String LCPI : lcpiConfig.getLCPINames())
-			{
-				String formula = lcpiConfig.getProperties().getProperty(LCPI);
-				int index = profile.getConstants().getLCPITranslation().get(LCPI);
-
-				double result = mathParser.parse(formula, profile, machineConfig.getProperties()); 
-				profile.setLCPI(index, result);
-
-				// log.info(profile.getCodeSectionInfo() + ": " + LCPI + " = " + result);
-			}
-			
-			// log.info(profile.getCodeSectionInfo() + ": " + profile.getLCPI(profile.getConstants().getLCPITranslation().get("DATA_MEM")));
-			log.info(profile.getCodeSectionInfo() + ": " + profile.getMetric(profile.getConstants().getIndexOfCycles()));
-			// log.info(profile.getCodeSectionInfo() + ": " + profile.getImportance()*100);
+			log.error("HPCDATA_LOCATION was not set in " + peConfigLocation + "/perfexpert.properties, cannot proceed");
+			return;
 		}
+
+		LCPIConfigManager lcpiConfig = new LCPIConfigManager("file://" + CONFIG_LOCATION + "/lcpi.properties");
+		if (lcpiConfig.readConfigSource() == false)		// Error while reading configuraiton, handled inside method
+			return;
+		
+		MachineConfigManager machineConfig = new MachineConfigManager("file://" + CONFIG_LOCATION + "/machine.properties");
+		if (machineConfig.readConfigSource() == false)		// Error while reading configuraiton, handled inside method
+			return;
+		
+		HPCToolkitParser parser01 = new HPCToolkitParser(HPCDATA_LOCATION, 0.1, "file:///home/klaus/temp/perfexpert/sample-perfexpert-files/01.xml", lcpiConfig.getProperties());
+		List<HPCToolkitProfile> profiles01 = parser01.parse();
+
+		HPCToolkitParser parser02 = new HPCToolkitParser(HPCDATA_LOCATION, 0.1, "file:///home/klaus/temp/perfexpert/sample-perfexpert-files/01-diff.xml", lcpiConfig.getProperties());
+		List<HPCToolkitProfile> profiles02 = parser02.parse();
+
+		HPCToolkitPresentation.presentSummaryProfiles(profiles01, profiles02, lcpiConfig, machineConfig);
 	}
 }

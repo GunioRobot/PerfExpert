@@ -24,11 +24,14 @@ public class HPCToolkitParser extends AParser
 	RandomAccessFile file;
 	Properties LCPIConfig;
 	List<HPCToolkitProfile> profiles = null;
+	
+	private String HPCDataLocation;
 
-	public HPCToolkitParser(double threshold, String sourceURI, Properties LCPIConfig)
+	public HPCToolkitParser(String HPCDataLocation, double threshold, String sourceURI, Properties LCPIConfig)
 	{
 		super(threshold, sourceURI);
 		this.LCPIConfig = LCPIConfig;
+		this.HPCDataLocation = HPCDataLocation;
 	}
 	
 	public List<HPCToolkitProfile> getAllProfiles()
@@ -66,7 +69,13 @@ public class HPCToolkitParser extends AParser
 			try
 			{
 				log.info("Converting input file \"" + filename + "\" to flat-profile XML: \"" + convertedFilename + "\"");
-				p = new ProcessBuilder("/bin/sh", "/home/ashay/temp/perfexpert/hpcdata.sh", "-o", convertedFilename, filename).start();
+				if (!new File(HPCDataLocation + "/hpcdata.sh").exists())
+				{
+					log.error("Could not locate HPCToolkit conversion program at: " + HPCDataLocation + "/hpcdata.sh");
+					return null;
+				}
+
+				p = new ProcessBuilder("/bin/sh", HPCDataLocation + "/hpcdata.sh", "-o", convertedFilename, filename).start();
 				
 				// Check if there were errors
 				byte [] byteArray = new byte [1024];
@@ -90,7 +99,26 @@ public class HPCToolkitParser extends AParser
 			
 			// Get the big wheels turning...
 			// Parse the XML now and load profiles
-			process(convertedFilename);		
+			process(convertedFilename);
+			
+			// We don't need the converted file any longer
+			new File(convertedFilename).delete();
+
+			// Sort profiles in descending order by importance, ignore (0) because it contains the root (aggregate) profile
+			// Collections.sort(profiles);
+			for (int i=1; i<profiles.size()-1; i++)
+			{
+				for (int j=i+1; j<profiles.size(); j++)
+				{
+					if (profiles.get(i).getImportance() < profiles.get(j).getImportance())
+					{
+						// Swap
+						HPCToolkitProfile temp = profiles.get(i);
+						profiles.set(i, profiles.get(j));
+						profiles.set(j, temp);
+					}
+				}
+			}
 		}
 		else
 			log.error("Unsupported URI type for input file in \"" + sourceURI + "\"");

@@ -10,7 +10,7 @@ import org.apache.log4j.Logger;
 public abstract class AConfigManager
 {
 	protected String sourceURI = null;
-	protected Properties props = new Properties();
+	protected LinkedProperties props = new LinkedProperties();
 	Logger log = Logger.getLogger( AConfigManager.class );
 	
 	AConfigManager()
@@ -47,12 +47,12 @@ public abstract class AConfigManager
 			}
 			catch (FileNotFoundException e)
 			{
-				log.error("Machine configuration not found in: " + sourceURI);
+				log.error("Configuration not found in: " + sourceURI);
 				return false;
 			}
 			catch (IOException e)
 			{
-				log.error("Error loading machine configuration from " + sourceURI);
+				log.error("Error loading configuration from " + sourceURI);
 				e.printStackTrace();
 				return false;
 			}

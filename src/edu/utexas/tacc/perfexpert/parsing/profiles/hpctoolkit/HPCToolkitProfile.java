@@ -1,5 +1,7 @@
 package edu.utexas.tacc.perfexpert.parsing.profiles.hpctoolkit;
 
+import java.text.DecimalFormat;
+
 import org.apache.log4j.Logger;
 
 import edu.utexas.tacc.perfexpert.parsing.profiles.AProfile;
@@ -9,7 +11,8 @@ public class HPCToolkitProfile extends AProfile implements Comparable<HPCToolkit
 	Logger log = Logger.getLogger( HPCToolkitProfile.class );
 
 	private HPCToolkitProfileConstants profileConstants;
-	
+
+	private DecimalFormat twoDForm = new DecimalFormat("#.###");
 	int LCPICount = 10;
 
 	// Used for measuring the amount of variation
@@ -41,7 +44,7 @@ public class HPCToolkitProfile extends AProfile implements Comparable<HPCToolkit
 		if (index > LCPICount)
 			return 0;
 
-		return lcpiValues[index];
+		return roundToTwoDigitsAfterDecimal(lcpiValues[index]);
 	}
 
 	@Override
@@ -68,7 +71,7 @@ public class HPCToolkitProfile extends AProfile implements Comparable<HPCToolkit
 		if (counts[PEIndex] == 0 || perfValues[PEIndex] == 0)
 			return 0;
 		
-		return perfValues[PEIndex]/counts [PEIndex];
+		return roundToTwoDigitsAfterDecimal(perfValues[PEIndex]/counts [PEIndex]);
 	}
 
 	@Override
@@ -97,7 +100,7 @@ public class HPCToolkitProfile extends AProfile implements Comparable<HPCToolkit
 
 			// Set importance
 			if (profileConstants.aggregateCycles != 0)
-				importance = value / ((double) profileConstants.aggregateCycles);
+				importance = (perfValues[PEIndex]/counts[PEIndex]) / ((double) profileConstants.aggregateCycles);
 			else
 			{
 				// If everything is correct, this is the record of the aggregate execution
@@ -117,12 +120,12 @@ public class HPCToolkitProfile extends AProfile implements Comparable<HPCToolkit
 		if (maxCycles == Double.MIN_VALUE)	// Value was never set
 			return 0;
 
-		return maxCycles-minCycles;
+		return roundToTwoDigitsAfterDecimal((maxCycles-minCycles)/maxCycles);
 	}
 	
 	public double getImportance ()
 	{
-		return importance;
+		return roundToTwoDigitsAfterDecimal(importance);
 	}
 	
 	public void setImportance(double importance)
@@ -130,9 +133,15 @@ public class HPCToolkitProfile extends AProfile implements Comparable<HPCToolkit
 		this.importance = importance;
 	}
 
-@Override
+	@Override
 	public int compareTo(HPCToolkitProfile o)
 	{
 		return (int) (importance - o.getImportance()); 
+	}
+
+	// To maintain consistency of results with Perl version
+	private double roundToTwoDigitsAfterDecimal(double in)
+	{
+		return Double.valueOf(twoDForm.format(in));
 	}
 }

@@ -298,6 +298,8 @@ public class HPCToolkitXMLParser extends DefaultHandler
 	// Formats the given information into a string of the form: [ in procedure foo()] at foobar.c:90
 	String formatCodeSection(int lineNumber, boolean newProcedure)
 	{
+		// TODO: Needs some refactoring to leverage the modular methods for each component
+
 		String location;
 		String shortModuleName = loadedModule.substring(loadedModule.lastIndexOf('/')+1);
 		String procedureName = procedureStack.isEmpty() ? null : procedureStack.peek();		
@@ -309,6 +311,34 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		else location = (lineNumber != 0) ? " line " + lineNumber : "" + (newProcedure == false ? (procedureName != null ? " in procedure " + procedureName + "()" : "") : "") + (filename != null && !filename.equals("~unknown-file~") ? " in file \"" + filename + "\"" : "");
 		
 		return location + " in " + shortModuleName;
+	}
+	
+	String formatFilename(String filename, int lineNumber)
+	{
+		if (lineNumber == 0 && isFilenameEmpty(filename))
+			return null;
+		else if (lineNumber != 0 && isFilenameEmpty(filename))
+			return filename + ":" + lineNumber;
+
+		return isFilenameEmpty(filename) ? formatLineNumber(lineNumber) : "in " + filename;  
+	}
+	
+	String formatFunctionName(String functionName)
+	{		
+		return "in function " + functionName + (functionName.contains("inlined") ? "" : "()");
+	}
+	
+	String formatLineNumber(int lineNumber)
+	{
+		if (lineNumber != 0)
+			return "at line " + lineNumber;
+		
+		return null;
+	}
+	
+	boolean isFilenameEmpty(String filename)
+	{
+		return filename == null || filename.equals("~unknown-file~");
 	}
 
 	// So that we can retrieve all of the collected information at the end of the parsing
