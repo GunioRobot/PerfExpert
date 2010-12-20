@@ -9,10 +9,10 @@ Steps in the Perl code, with status of migration to Java:
 [DONE] 6. Parse each metric line
 [DONE] 7. If necessary, parse metrics from the second file (for diffing)
 [DONE] 8. Sort code items by priority (percentage of total running time)
-9. For each discovered metric:
+[DONE] 9. For each discovered metric:
   [DONE] a. Ignore if relative importance is lower than threshold
-  b. Compute LCPIs
-  c. Print bars
+  [DONE] b. Compute LCPIs
+  [DONE] c. Print bars
 
 Code components: [edu.utexas.tacc.perfexpert]
  - Configuration

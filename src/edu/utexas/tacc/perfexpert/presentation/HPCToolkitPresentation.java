@@ -71,7 +71,7 @@ public class HPCToolkitPresentation
 			HPCToolkitProfile matchingProfile = getMatchingProfile(profile, profiles02);
 
 			if (matchingProfile == null)
-				System.out.println("\n" + profile.getCodeSectionInfo() + " (" + (profile.getImportance()*100) + "% of the total runtime)");
+				System.out.println("\n" + profile.getCodeSectionInfo() + " (" + doubleFormat.format(profile.getImportance()*100) + "% of the total runtime)");
 			else
 			{
 				double cycles2 = matchingProfile.getMetricBasedOnPEIndex(indexOfCycles);

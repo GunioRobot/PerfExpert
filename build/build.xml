@@ -41,7 +41,7 @@
             <classpath refid="PerfExpert.classpath"/>
         </java>
     </target>
-    <target name="jar" depends="build-project">
+    <target name="jar" depends="clean,build-project">
         <jar jarfile="bin/perfexpert.jar" basedir="bin/"/>
     </target>
 </project>
