@@ -16,6 +16,7 @@ public class HPCToolkitProfileConstants
 	List<Integer> HPCToPETranslation = new ArrayList<Integer>();
 	Map<String,Integer> lcpiTranslation = new HashMap<String,Integer>();
 
+	int indexOfInstructions = -1;
 	int indexOfCycles = -1;
 	int discoveredMetrics = 0;
 	long aggregateCycles = 0; 
@@ -39,10 +40,15 @@ public class HPCToolkitProfileConstants
 	{
 		this.lcpiTranslation = lcpiTranslation;
 	}
-	
+
 	public int getIndexOfCycles()
 	{
 		return indexOfCycles;
+	}
+	
+	public int getIndexOfInstructions()
+	{
+		return indexOfInstructions;
 	}
 	
 	public long getAggregateCycles()
@@ -66,6 +72,9 @@ public class HPCToolkitProfileConstants
 		else	// Register new metric
 		{
 			// Since we will require this frequently, it is best if we don't turn to the HashMap everytime
+			if (metricName.equals("PAPI_TOT_INS"))
+				indexOfInstructions = discoveredMetrics;
+			
 			if (metricName.equals("PAPI_TOT_CYC"))
 				indexOfCycles = discoveredMetrics;
 			
