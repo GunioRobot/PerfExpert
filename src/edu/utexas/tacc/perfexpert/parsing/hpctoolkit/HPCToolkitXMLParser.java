@@ -75,7 +75,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 			log.debug("Found a \"P\" element for \"" + procedureName + "\"" + codeSection + ", starting to record a new Profile object");
 
 			profile = new HPCToolkitProfile(profileConstants);
-			profile.setCodeSectionInfo("Function " + procedureName + "()" + codeSection);
+			profile.setCodeSectionInfo("Function " + procedureName + (procedureName.contains("(") ? "" : "()") + codeSection);
 			profileList.add(profile);
 			return;
 		}
