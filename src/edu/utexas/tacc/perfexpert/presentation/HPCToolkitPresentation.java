@@ -82,7 +82,7 @@ public class HPCToolkitPresentation
 
 			double maxVariation = matchingProfile == null ? profile.getVariation() : (profile.getVariation() > matchingProfile.getVariation() ? profile.getVariation() : matchingProfile.getVariation());
 			if (maxVariation > 0.2)
-				System.out.println("WARNING: The cycle count variation is " + doubleFormat.format(maxVariation*100) + "%, making the results unreliable");
+				System.out.println("WARNING: The instruction count variation is " + doubleFormat.format(maxVariation*100) + "%, making the results unreliable");
 
 			if (cycles < cpuFrequency)
 			{

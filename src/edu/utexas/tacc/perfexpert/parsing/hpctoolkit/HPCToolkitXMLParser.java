@@ -295,7 +295,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		}
 	}
 
-	// Formats the given information into a string of the form: [ in procedure foo()] at foobar.c:90
+	// Formats the given information into a string of the form: [ in function foo()] at foobar.c:90
 	String formatCodeSection(int lineNumber, boolean newProcedure)
 	{
 		// TODO: Needs some refactoring to leverage the modular methods for each component
@@ -307,10 +307,10 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		if (lineNumber == 0 && procedureName == null && (filename == null || filename.equals("~unknown-file~"))) 
 			location = "~unknown-location~";
 		else if (filename != null && !filename.equals("~unknown-file~") && lineNumber != 0)
-			location = (newProcedure == false ? (procedureName != null ? " in function " + procedureName + "()" : "") : "") + " at " + filename + ":" + lineNumber;
-		else location = (lineNumber != 0) ? " line " + lineNumber : "" + (newProcedure == false ? (procedureName != null ? " in procedure " + procedureName + "()" : "") : "") + (filename != null && !filename.equals("~unknown-file~") ? " in file \"" + filename + "\"" : "");
+			location = (newProcedure == false ? (procedureName != null ? " in function " + procedureName + (procedureName.contains("(") ? "" : "()") : "") : "") + " at " + filename + ":" + lineNumber;
+		else location = (lineNumber != 0) ? " line " + lineNumber : "" + (newProcedure == false ? (procedureName != null ? " in function " + procedureName + (procedureName.contains("(") ? "" : "()") : "") : "") + (filename != null && !filename.equals("~unknown-file~") ? " in file \"" + filename + "\"" : "");
 		
-		return location + " in " + shortModuleName;
+		return location; // + " in " + shortModuleName;
 	}
 	
 	String formatFilename(String filename, int lineNumber)
