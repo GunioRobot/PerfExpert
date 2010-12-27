@@ -57,7 +57,7 @@ public class HPCToolkitPresentation
 			log.error("Could not find CPI_threshold in machine.properties, defaulting to 0.5");
 			CPIThreshold = "0.5";
 		}
-		
+
 		double dCPIThreshold = Double.parseDouble(CPIThreshold);
 		for (HPCToolkitProfile profile : profiles01)
 		{
@@ -95,10 +95,24 @@ public class HPCToolkitPresentation
 				System.out.println("The performance of this code section is good");
 			else
 			{
-				System.out.println("performance assessment    LCPI good......okay......fair......poor......bad....");
+				System.out.println (String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s  LCPI good......okay......fair......poor......bad....", "performance assessment"));
 				// Compute each LCPI metric
+
 				for (String LCPI : lcpiConfig.getLCPINames())
 				{
+					String category, subcategory;
+					int indexOfPeriod = LCPI.indexOf("."); 
+					if (indexOfPeriod < 0)
+					{
+						category = "overall";
+						subcategory = LCPI;
+					}
+					else
+					{
+						category = LCPI.substring(0, indexOfPeriod);
+						subcategory = LCPI.substring(indexOfPeriod+1);
+					}
+
 					String formula = lcpiConfig.getProperties().getProperty(LCPI);
 					int index = lcpiTranslation.get(LCPI);
 	
@@ -113,7 +127,7 @@ public class HPCToolkitPresentation
 					}
 	
 					profile.setLCPI(index, result01);
-					log.debug(profile.getCodeSectionInfo() + ": " + LCPI + " = " + result01);
+					log.debug(profile.getCodeSectionInfo() + ": " + category + "." + subcategory + " = " + result01);
 					
 					double result02 = result01;
 					if (matchingProfile != null)
@@ -128,15 +142,29 @@ public class HPCToolkitPresentation
 						}
 		
 						matchingProfile.setLCPI(index, result02);
-						log.debug(matchingProfile.getCodeSectionInfo() + ": " + LCPI + " = " + result02);
+						log.debug(matchingProfile.getCodeSectionInfo() + ": " + category + "." + subcategory + " = " + result02);
 					}
-					
-					if (matchingProfile == null)
-						System.out.print(String.format("%23s: %4.1f  ", LCPI, result01));
+
+					if (subcategory.regionMatches(true, 0, "overall", 0, subcategory.length())) 
+					{
+						// Print the category name
+						System.out.print(String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s: ", "* " + category.replaceAll("_", " ")));
+					}
 					else
-						System.out.print(String.format("%23s:       ", LCPI));
+						System.out.print(String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s: ", "   - " + subcategory.replaceAll("_", " ")));
+
+					if (matchingProfile == null)
+						System.out.print(String.format("%4.1f ", result01));
+					else
+						System.out.print("     ");
 
 					printBar(result01, result02, dCPIThreshold);
+					
+					if (category.regionMatches(true, 0, "overall", 0, category.length()))
+					{
+						// Print line about upper bounds
+						System.out.println("upper bound estimates");
+					}
 				}
 			}
 		}

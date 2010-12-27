@@ -19,8 +19,8 @@ public class HPCToolkitProfileConstants
 	int indexOfInstructions = -1;
 	int indexOfCycles = -1;
 	int discoveredMetrics = 0;
-	long aggregateCycles = 0; 
-	
+	long aggregateCycles = 0;
+
 	public Map<String,Integer> getPerfCounterTranslation()
 	{
 		return perfCounterTranslation;

@@ -28,6 +28,7 @@ public class HPCToolkitProfile extends AProfile implements Comparable<HPCToolkit
 		this.profileConstants = profileConstants;
 		perfValues = new double [profileConstants.discoveredMetrics];
 		counts = new int [profileConstants.discoveredMetrics];
+		LCPICount = profileConstants.lcpiTranslation.size();
 		lcpiValues = new double [LCPICount];
 	}
 	
