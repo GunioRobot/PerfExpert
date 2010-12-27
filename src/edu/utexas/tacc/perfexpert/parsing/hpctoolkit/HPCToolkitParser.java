@@ -101,9 +101,6 @@ public class HPCToolkitParser extends AParser
 			// Parse the XML now and load profiles
 			process(convertedFilename);
 			
-			// We don't need the converted file any longer
-			new File(convertedFilename).delete();
-
 			// Sort profiles in descending order by importance, ignore (0) because it contains the root (aggregate) profile
 			// Collections.sort(profiles);
 			for (int i=1; i<profiles.size()-1; i++)
@@ -175,7 +172,7 @@ public class HPCToolkitParser extends AParser
 		}
 		
 		// Processed input file without errors, so remove the converted file from disk
-		// new File(filename).delete();
+		new File(filename).delete();
 	}
 
 	// Used while saving the output of the conversion
