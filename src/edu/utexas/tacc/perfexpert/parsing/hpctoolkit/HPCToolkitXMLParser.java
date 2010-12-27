@@ -271,7 +271,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		if (profileConstants.getAggregateCycles() == 0)
 		{
 			// Adjust the aggregate cycles and recalculate importance of root profile (aggregate), which will be 1.0
-			profileConstants.setAggregateCycles((long) profileList.get(0).getMetric(profileConstants.getIndexOfCycles()));
+			profileConstants.setAggregateCycles((long) profileList.get(0).getMetricBasedOnPEIndex(profileConstants.getIndexOfCycles()));
 			
 			HPCToolkitProfile rootProfile = profileList.get(0);
 			rootProfile.setImportance(1.0);

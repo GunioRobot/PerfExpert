@@ -68,7 +68,7 @@ public class PerfExpert
 			if (!new File(peConfigLocation + "/perfexpert.properties").exists())
 			{
 				// Could not find in the alternate location also, give up
-				log.error("Could not find seed configuration file perfexpert.properties, terminating...");
+				log.error("Could not find seed configuration file perfexpert.properties in either /opt/apps/perfexpert or " + peConfigLocation + ", terminating...");
 				return;
 			}
 		}

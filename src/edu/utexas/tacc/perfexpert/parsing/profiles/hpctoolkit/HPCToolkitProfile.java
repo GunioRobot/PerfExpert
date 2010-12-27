@@ -12,11 +12,11 @@ public class HPCToolkitProfile extends AProfile implements Comparable<HPCToolkit
 
 	private HPCToolkitProfileConstants profileConstants;
 
-	private DecimalFormat twoDForm = new DecimalFormat("#.###");
+	private DecimalFormat doubleFormat = new DecimalFormat("#.###");
 	int LCPICount = 10;
 
 	// Used for measuring the amount of variation
-	double maxCycles = Double.MIN_VALUE, minCycles = Double.MAX_VALUE;
+	double maxInstructions = Double.MIN_VALUE, minInstructions = Double.MAX_VALUE;
 
 	double importance = -1;
 	double [] perfValues;
@@ -92,12 +92,15 @@ public class HPCToolkitProfile extends AProfile implements Comparable<HPCToolkit
 		perfValues[PEIndex] += value;
 		counts[PEIndex]++;
 		
-		if (PEIndex == profileConstants.indexOfCycles)
+		if (PEIndex == profileConstants.indexOfInstructions)
 		{
 			// Adjust min and max
-			if (minCycles > value)	minCycles = value;
-			if (maxCycles < value)	maxCycles = value;
-
+			if (minInstructions > value)	minInstructions = value;
+			if (maxInstructions < value)	maxInstructions = value;
+		}
+		
+		if (PEIndex == profileConstants.indexOfCycles)
+		{
 			// Set importance
 			if (profileConstants.aggregateCycles != 0)
 				importance = (perfValues[PEIndex]/counts[PEIndex]) / ((double) profileConstants.aggregateCycles);
@@ -117,10 +120,10 @@ public class HPCToolkitProfile extends AProfile implements Comparable<HPCToolkit
 	
 	public double getVariation()
 	{
-		if (maxCycles == Double.MIN_VALUE)	// Value was never set
+		if (maxInstructions == Double.MIN_VALUE)	// Value was never set
 			return 0;
 
-		return roundToTwoDigitsAfterDecimal((maxCycles-minCycles)/maxCycles);
+		return roundToTwoDigitsAfterDecimal((maxInstructions-minInstructions)/maxInstructions);
 	}
 	
 	public double getImportance ()
@@ -142,6 +145,6 @@ public class HPCToolkitProfile extends AProfile implements Comparable<HPCToolkit
 	// To maintain consistency of results with Perl version
 	private double roundToTwoDigitsAfterDecimal(double in)
 	{
-		return Double.valueOf(twoDForm.format(in));
+		return Double.valueOf(doubleFormat.format(in));
 	}
 }

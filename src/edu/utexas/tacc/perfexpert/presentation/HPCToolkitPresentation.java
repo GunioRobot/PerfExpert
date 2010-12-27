@@ -42,13 +42,13 @@ public class HPCToolkitPresentation
 		Map<String, Integer> perfCtrTranslation = profileConstants.getPerfCounterTranslation();
 		Map<String, Integer> lcpiTranslation = profileConstants.getLCPITranslation();
 		
-		int indexOfCycles = profileConstants.getIndexOfCycles();
-		Integer indexOfInstructions = perfCtrTranslation.get("PAPI_TOT_INS");
+		Integer indexOfCycles = perfCtrTranslation.get("PAPI_TOT_CYC");
+		int indexOfInstructions = profileConstants.getIndexOfInstructions();
 		String CPIThreshold = machineConfig.getProperties().getProperty("CPI_threshold");
 		
-		if (indexOfInstructions == null)
+		if (indexOfCycles == null)
 		{
-			log.error("Could not find PAPI_TOT_INS among the list of discovered counters, cannot proceed with LCPI computation");
+			log.error("Could not find PAPI_TOT_CYC among the list of discovered counters, cannot proceed with LCPI computation");
 			return;
 		}
 		

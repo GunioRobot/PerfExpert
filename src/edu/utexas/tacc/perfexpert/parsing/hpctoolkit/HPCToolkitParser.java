@@ -167,10 +167,10 @@ public class HPCToolkitParser extends AParser
 		}
 
 		// Sanity check
-		int indexOfCycles = profiles.get(0).getConstants().getIndexOfCycles();
-		if (indexOfCycles < 0)
+		int indexOfInstructions = profiles.get(0).getConstants().getIndexOfInstructions();
+		if (indexOfInstructions < 0)
 		{
-			log.error("Could not find PAPI_TOT_CYC in the list of performance counters that HPCToolkit recorded. Is the input file valid?");
+			log.error("Could not find PAPI_TOT_INS in the list of performance counters that HPCToolkit recorded. Is the input file valid?");
 			return;
 		}
 		
