@@ -105,7 +105,7 @@ public class PerfExpert
 
 		if (filename02 != null)
 		{
-			HPCToolkitParser parser02 = new HPCToolkitParser(HPCDATA_LOCATION, threshold, "file://" + filename02, lcpiConfig.getProperties());
+			HPCToolkitParser parser02 = new HPCToolkitParser(HPCDATA_LOCATION, 0, "file://" + filename02, lcpiConfig.getProperties());
 			profiles02 = parser02.parse();
 		}
 
