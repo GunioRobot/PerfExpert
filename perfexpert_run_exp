@@ -1,14 +1,33 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # Constants
-HPCTOOLKIT_BIN=/home/klaus/apps/hpctoolkit/bin
+HPCTOOLKIT_BIN=/home/ashay/apps/hpctoolkit/bin
 
 # Sanity checks
 if [ ${#} -lt 1 ]
 then
-	echo "USAGE: ${0} program-name [arguments]"
+	echo "USAGE: ${0} [--structure hpcstruct-file] program-name [arguments]"
 	exit 1;
 fi
+
+hpcstruct_file="";
+if [ ${1} = "--structure" ]
+then
+	hpcstruct_file=${2};
+	if [ ${#} -lt 3 ]
+	then
+		echo "USAGE: ${0} [--structure hpcstruct-file] program-name [arguments]"
+		exit 1;
+	fi
+
+	if [ ! -f ${hpcstruct_file} ]
+	then
+		echo "Could not find hpc struct file: ${hpcstruct_file}, try entering the absolute path";
+		exit 1;
+	fi
+
+	shift; shift;
+fi;
 
 program_name=${1};
 
@@ -21,9 +40,19 @@ fi;
 
 if [ ! -f ${program_name} ]
 then
-	echo "Could not find file: ${program_name}, please try entering the absolute path";
+	echo "Could not find file: ${program_name}, try entering the absolute path";
 	exit 1;
 fi
+
+# Check if the output file already exists
+if [ -f "experiment.xml" ]
+then
+	read -e -r -p "'experiment.xml' already exists. Proceeding further will overwrite this file. Continue? [Y/n] " -n 1 reply;
+	if [ "${reply}" != "Y" -a "${reply}" != "y" -a "${reply}" != "" ]
+	then
+		exit 1;
+	fi;
+fi;
 
 # Put everything into a temporary directory instead of clobbering the working directory
 tempDir=`mktemp -d`;
@@ -31,7 +60,15 @@ tempDir=`mktemp -d`;
 # Just to be sure, we remove any files which might previously exist
 rm -rf ${tempDir}/*;
 
-${HPCTOOLKIT_BIN}/hpcstruct --output ${tempDir}/hpcstruct ${program_name};
+# Check if we received the HPCStruct file as a parameter
+if [ "x${hpcstruct_file}" != "x" ]
+then
+	# If yes, use it
+	cp ${hpcstruct_file} ${tempDir}/hpcstruct;
+else
+	# Else generate it
+	${HPCTOOLKIT_BIN}/hpcstruct --output ${tempDir}/hpcstruct ${program_name};
+fi
 
 # Run experiments with different configurations
 ${HPCTOOLKIT_BIN}/hpcrun --event WALLCLOCK --output ${tempDir}/measurements ${program_name} ${arguments};
