@@ -1,0 +1,50 @@
+#!/bin/sh
+
+# Constants
+HPCTOOLKIT_BIN=/home/klaus/apps/hpctoolkit/bin
+
+# Sanity checks
+if [ ${#} -lt 1 ]
+then
+	echo "USAGE: ${0} program-name [arguments]"
+	exit 1;
+fi
+
+program_name=${1};
+
+arguments="";
+shift;
+if [ "x${*}" != "x" ]
+then
+	arguments=${*};
+fi;
+
+if [ ! -f ${program_name} ]
+then
+	echo "Could not find file: ${program_name}, please try entering the absolute path";
+	exit 1;
+fi
+
+# Put everything into a temporary directory instead of clobbering the working directory
+tempDir=`mktemp -d`;
+
+# Just to be sure, we remove any files which might previously exist
+rm -rf ${tempDir}/*;
+
+${HPCTOOLKIT_BIN}/hpcstruct --output ${tempDir}/hpcstruct ${program_name};
+
+# Run experiments with different configurations
+${HPCTOOLKIT_BIN}/hpcrun --event WALLCLOCK --output ${tempDir}/measurements ${program_name} ${arguments};
+
+${HPCTOOLKIT_BIN}/hpcprof --struct ${tempDir}/hpcstruct --output ${tempDir}/database ${tempDir}/measurements;
+
+# Get the final experiment.xml here
+mv ${tempDir}/database/experiment.xml .
+
+# Clean up
+rm -rf ${tempDir};
+rm -f core;
+
+echo
+echo "Run the following command to analyze the measurement data:"
+echo "perfexpert 0.1 experiment.xml"
