@@ -186,7 +186,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		{
 			String metricName = attr.getValue("n");
 
-			String regex = "^(\\w+)\\.\\[[^\\]]*\\](|\\.\\d+) \\((\\w)\\)$";
+			String regex = "^([\\w:]+)\\.\\[[^\\]]*\\](|\\.\\d+) \\((\\w)\\)$";
 			Pattern p = Pattern.compile(regex);
 			Matcher m = p.matcher(metricName);
 			
