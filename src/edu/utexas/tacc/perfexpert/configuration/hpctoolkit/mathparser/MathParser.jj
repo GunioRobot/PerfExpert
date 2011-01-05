@@ -65,7 +65,7 @@ TOKEN:
 	< NUMBER: (<DIGIT>)+ ( "." (<DIGIT>)+ )? >
 |	< DIGIT: ["0"-"9"] >
 |	< LETTER: ["A"-"Z"]|["a"-"z"] >
-|	< SYMBOL: ("_"|<LETTER>|<DIGIT>)+ >
+|	< SYMBOL: ("_"|":"|<LETTER>|<DIGIT>)+ >
 }
 double parseOneLine(HPCToolkitProfile profile, Properties machineConfig):
 {
