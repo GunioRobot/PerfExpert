@@ -43,7 +43,7 @@ public class MathParser implements MathParserConstants {
 
                                 if (indexOfColon != -1)
                                 {
-                                        index = profile.getConstants().getPerfCounterTranslation().get(token.substring(0, indexOfColon-1));
+                                        index = profile.getConstants().getPerfCounterTranslation().get(token.substring(0, indexOfColon));
                                         if (index != null)
                                                 return profile.getMetricBasedOnPEIndex(index);
                                 }
