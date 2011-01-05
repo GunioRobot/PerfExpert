@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Sample jobscript to run a.out with PerfExpert
+
+#$ -V				# Inherit the submission environment
+#$ -cwd				# Start job in submission directory
+#$ -N PerfExpert		# Job Name
+#$ -j y				# Combine stderr and stdout
+#$ -o $JOB_NAME.o$JOB_ID	# Name of the output file (eg. PerfExpert.oJobID)
+#$ -pe 1way 16			# Requests 1 node, 16 cores total
+#$ -q normal
+#$ -l h_rt=00:20:00		# Typically about 6 to 7 times normal running time
+
+################################################################
+
+perfexpert_run_exp ./a.out argument1 argument2
