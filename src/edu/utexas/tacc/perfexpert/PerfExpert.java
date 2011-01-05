@@ -34,9 +34,9 @@ public class PerfExpert
 			return;
 		}
 
-		if (threshold == null)
+		if (threshold == null || threshold < 0 || threshold > 1.0)
 		{
-			log.error("Threshold parameter was invalid, expected a double, instead found \"" + args[0] + "\"");
+			log.error("Threshold parameter was invalid, expected a double between 0 and 1, instead found \"" + args[0] + "\"");
 			return;
 		}
 
