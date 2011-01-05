@@ -34,22 +34,33 @@ public class MathParser
 	{
 		// Check in the profile (for perf counter values) and in the machine configuration (for machine constants like BR_lat)
 		// If not present in both, log an error and return 0;
-		
-		Integer index = profile.getConstants().getPerfCounterTranslation().get(token);
-		if (index == null)
+
+		String machineValue = machineConfig.getProperty(token);
+		if (machineValue == null || machineValue.isEmpty())
 		{
-			String machineValue = machineConfig.getProperty(token); 
-			if (machineValue == null || machineValue.isEmpty())
+			// Check among perf counters
+			Integer index = profile.getConstants().getPerfCounterTranslation().get(token);
+
+			if (index == null)
 			{
-				// Both empty, throw error
-				log.error("Could not find definition for \"" + token + "\" while parsing LCPI metrics, defaulting to zero");
+				// Before throwing an error, check for one last time if a metric exists with just the prefix
+				int indexOfColon = token.indexOf(':');
+
+				if (indexOfColon != -1)
+				{
+					index = profile.getConstants().getPerfCounterTranslation().get(token.substring(0, indexOfColon-1));
+					if (index != null)
+						return profile.getMetricBasedOnPEIndex(index);
+				}
+
+				log.error("Could not find definition for \u005c"" + token + "\u005c" while parsing LCPI metrics, defaulting to zero");
 				return 0;
 			}
-			else
-				return Double.parseDouble(machineValue);
-		}
-		else
+
 			return profile.getMetricBasedOnPEIndex(index);
+		}
+
+		return Double.parseDouble(machineValue);
 	}
 }
 PARSER_END(MathParser)

@@ -30,21 +30,32 @@ public class MathParser implements MathParserConstants {
                 // Check in the profile (for perf counter values) and in the machine configuration (for machine constants like BR_lat)
                 // If not present in both, log an error and return 0;
 
-                Integer index = profile.getConstants().getPerfCounterTranslation().get(token);
-                if (index == null)
+                String machineValue = machineConfig.getProperty(token);
+                if (machineValue == null || machineValue.isEmpty())
                 {
-                        String machineValue = machineConfig.getProperty(token);
-                        if (machineValue == null || machineValue.isEmpty())
+                        // Check among perf counters
+                        Integer index = profile.getConstants().getPerfCounterTranslation().get(token);
+
+                        if (index == null)
                         {
-                                // Both empty, throw error
+                                // Before throwing an error, check for one last time if a metric exists with just the prefix
+                                int indexOfColon = token.indexOf(':');
+
+                                if (indexOfColon != -1)
+                                {
+                                        index = profile.getConstants().getPerfCounterTranslation().get(token.substring(0, indexOfColon-1));
+                                        if (index != null)
+                                                return profile.getMetricBasedOnPEIndex(index);
+                                }
+
                                 log.error("Could not find definition for \u005c"" + token + "\u005c" while parsing LCPI metrics, defaulting to zero");
                                 return 0;
                         }
-                        else
-                                return Double.parseDouble(machineValue);
-                }
-                else
+
                         return profile.getMetricBasedOnPEIndex(index);
+                }
+
+                return Double.parseDouble(machineValue);
         }
 
   static final public double parseOneLine(HPCToolkitProfile profile, Properties machineConfig) throws ParseException {
@@ -247,62 +258,6 @@ public class MathParser implements MathParserConstants {
     finally { jj_save(12, xla); }
   }
 
-  static private boolean jj_3_2() {
-    if (jj_scan_token(0)) return true;
-    return false;
-  }
-
-  static private boolean jj_3_1() {
-    if (jj_3R_3()) return true;
-    if (jj_scan_token(0)) return true;
-    return false;
-  }
-
-  static private boolean jj_3R_4() {
-    if (jj_3R_6()) return true;
-    Token xsp;
-    while (true) {
-      xsp = jj_scanpos;
-      if (jj_3_6()) { jj_scanpos = xsp; break; }
-    }
-    return false;
-  }
-
-  static private boolean jj_3_13() {
-    if (jj_scan_token(13)) return true;
-    if (jj_3R_3()) return true;
-    return false;
-  }
-
-  static private boolean jj_3_12() {
-    if (jj_scan_token(SYMBOL)) return true;
-    return false;
-  }
-
-  static private boolean jj_3R_5() {
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_3_11()) {
-    jj_scanpos = xsp;
-    if (jj_3_12()) {
-    jj_scanpos = xsp;
-    if (jj_3_13()) return true;
-    }
-    }
-    return false;
-  }
-
-  static private boolean jj_3_11() {
-    if (jj_scan_token(NUMBER)) return true;
-    return false;
-  }
-
-  static private boolean jj_3_5() {
-    if (jj_scan_token(10)) return true;
-    if (jj_3R_3()) return true;
-    return false;
-  }
-
   static private boolean jj_3_3() {
     Token xsp;
     xsp = jj_scanpos;
@@ -369,6 +324,62 @@ public class MathParser implements MathParserConstants {
   static private boolean jj_3_7() {
     if (jj_scan_token(11)) return true;
     if (jj_3R_4()) return true;
+    return false;
+  }
+
+  static private boolean jj_3_2() {
+    if (jj_scan_token(0)) return true;
+    return false;
+  }
+
+  static private boolean jj_3_1() {
+    if (jj_3R_3()) return true;
+    if (jj_scan_token(0)) return true;
+    return false;
+  }
+
+  static private boolean jj_3R_4() {
+    if (jj_3R_6()) return true;
+    Token xsp;
+    while (true) {
+      xsp = jj_scanpos;
+      if (jj_3_6()) { jj_scanpos = xsp; break; }
+    }
+    return false;
+  }
+
+  static private boolean jj_3_13() {
+    if (jj_scan_token(13)) return true;
+    if (jj_3R_3()) return true;
+    return false;
+  }
+
+  static private boolean jj_3_12() {
+    if (jj_scan_token(SYMBOL)) return true;
+    return false;
+  }
+
+  static private boolean jj_3R_5() {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3_11()) {
+    jj_scanpos = xsp;
+    if (jj_3_12()) {
+    jj_scanpos = xsp;
+    if (jj_3_13()) return true;
+    }
+    }
+    return false;
+  }
+
+  static private boolean jj_3_11() {
+    if (jj_scan_token(NUMBER)) return true;
+    return false;
+  }
+
+  static private boolean jj_3_5() {
+    if (jj_scan_token(10)) return true;
+    if (jj_3R_3()) return true;
     return false;
   }
 
