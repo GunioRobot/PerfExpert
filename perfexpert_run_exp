@@ -1,7 +1,25 @@
 #!/usr/bin/env bash
 
-# Constants
+# Location of hpcrun, hpcstruct and hpcprof binaries 
 HPCTOOLKIT_BIN=/home/ashay/apps/hpctoolkit/bin
+
+# Event parameters to each run of hpcrun
+# Remove unused experiment lines
+# Each string should be of the format: --event <counter>[:frequency] --event <counter>[:frequency] ...
+
+experiment[0]="--event PAPI_TOT_CYC:13000027 --event PAPI_TOT_INS:13000049 --event PAPI_TLB_DM:510007 --event PAPI_TLB_IM:510031"
+experiment[1]="--event PAPI_TOT_CYC:13000027 --event PAPI_L1_DCA:5300003 --event PAPI_L2_DCA:1300021 --event PAPI_L2_TCM:510007"
+experiment[2]="--event PAPI_TOT_CYC:13000027 --event PAPI_L1_ICA:5300003 --event PAPI_L2_ICA:1300021 --event PAPI_L2_ICM:510007"
+experiment[3]="--event PAPI_TOT_CYC:13000027 --event PAPI_BR_INS:2300017 --event PAPI_BR_MSP:510007 --event L1I:CYCLES_STALLED:510031"
+experiment[4]="--event PAPI_TOT_CYC:13000027 --event FP_COMP_OPS_EXE:5300003 -e L2_RQSTS:SELF_DEMAND_MESI:510007"
+
+#XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX#
+#XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX#
+
+######## Do not edit anything below this line ########
+
+#XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX#
+#XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX#
 
 # Sanity checks
 if [ ${#} -lt 1 ]
@@ -71,7 +89,11 @@ else
 fi
 
 # Run experiments with different configurations
-${HPCTOOLKIT_BIN}/hpcrun --event WALLCLOCK --output ${tempDir}/measurements ${program_name} ${arguments};
+for index in $(seq 1 $((${#experiment[@]}-1)))
+do
+	cmd="${HPCTOOLKIT_BIN}/hpcrun ${experiment[${index}]} --output ${tempDir}/measurements ${program_name} ${arguments}";
+	echo ${cmd};
+done
 
 ${HPCTOOLKIT_BIN}/hpcprof --struct ${tempDir}/hpcstruct --output ${tempDir}/database ${tempDir}/measurements;
 
@@ -84,4 +106,4 @@ rm -f core;
 
 echo
 echo "Run the following command to analyze the measurement data:"
-echo "perfexpert 0.1 experiment.xml"
+echo "perfexpert <threshold-between-0-and-1> experiment.xml"
