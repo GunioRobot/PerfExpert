@@ -40,10 +40,10 @@ public class LCPIConfigManager extends AConfigManager
 				max = checkValue;
 		}
 
-		if (max < 23)	max = 23;
+		// Adjusting so that it is at least the width of the string "performance assessment"-3
+		if (max < 20)	max = 20;
 		largestStringLength = max;
 
-		// Adjusting so that it is at least the width of the string "performance assessment"
 		return max;
 	}
 
