@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-PERFEXPERT_HOME=/home/klaus/.workspace/PerfExpert
+PERFEXPERT_HOME=`dirname ${0}`;
 
 # Check if the jar file exists
 if [ -f ${PERFEXPERT_HOME}/bin/perfexpert.jar ]
