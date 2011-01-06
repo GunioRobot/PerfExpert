@@ -62,16 +62,6 @@ then
 	exit 1;
 fi
 
-# Check if the output file already exists
-if [ -f "experiment.xml" ]
-then
-	read -e -r -p "'experiment.xml' already exists. Proceeding further will overwrite this file. Continue? [Y/n] " -n 1 reply;
-	if [ "${reply}" != "Y" -a "${reply}" != "y" -a "${reply}" != "" ]
-	then
-		exit 1;
-	fi;
-fi;
-
 # Put everything into a temporary directory instead of clobbering the working directory
 tempDir=`mktemp -d .perfexpert-temp-XXXXXXX`;
 
