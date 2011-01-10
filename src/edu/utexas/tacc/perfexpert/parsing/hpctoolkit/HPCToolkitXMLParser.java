@@ -186,14 +186,14 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		{
 			String metricName = attr.getValue("n");
 
-			String regex = "^([\\w:]+)\\.\\[[^\\]]*\\](|\\.\\d+) \\((\\w)\\)$";
+			String regex = "^(|\\d\\.)([\\w:]+)\\.\\[[^\\]]*\\](|\\.\\d+) \\((\\w)\\)$";
 			Pattern p = Pattern.compile(regex);
 			Matcher m = p.matcher(metricName);
 			
 			if (m.find())
 			{
 				int HPCToolkitIndex = Integer.parseInt(attr.getValue("i"));
-				String revisedMetricName = m.group(1) + (m.group(2).equals("I") ? "_I" : "");
+				String revisedMetricName = m.group(2) + (m.group(4).equals("I") ? "_I" : "");
 
 				profileConstants.registerMetric(HPCToolkitIndex, revisedMetricName);
 			}
