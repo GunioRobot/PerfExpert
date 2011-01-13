@@ -36,7 +36,7 @@ For example:
     ~ashay/apps/PerfExpert/perfexpert_run_exp ./source
    
 
-Also, as you would note, the job execution time now needs to be higher than before. For Ranger, a value between 6x and 7x should suffice. If, at the end of the job, you do not see a 
+Also, as you would note, the job execution time now needs to be higher than before. For Ranger, a value between 6x and 7x should suffice. If, at the end of the job, you do not see a file: `experiment-${JOB_NAME}.o${JOB_ID}.xml`, then it could be likely that the runtime for the jobscript was not sufficient.
 
 
 
