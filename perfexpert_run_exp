@@ -19,7 +19,7 @@ experiment[4]="--event PAPI_TOT_CYC:13000027 --event FP_COMP_OPS_EXE:5300003 --e
 
 # Location of hpcrun, hpcstruct and hpcprof binaries 
 main_location="${HOME}/.perfexpert/perfexpert.properties"
-alt_location="/ops/apps/perfexpert/perfexpert.properties";
+alt_location="/opt/apps/perfexpert/perfexpert.properties";
 
 hpctoolkit_location=`(grep "^HPCTOOLKIT_LOCATION" "${main_location}" | sed -e 's/HPCTOOLKIT_LOCATION[\t ]*=[\t ]*\(.*\)/\1/') 2> /dev/null`
 
