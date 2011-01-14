@@ -140,6 +140,7 @@ If you want to change what happens between multiple runs of your program, use th
 
 # Analysing the collected data
 If the run completed successfully, there should be a file by the name: `experiment-${JOB_NAME}.o${JOB_ID}.xml` in the current directory. To analyze this file:
+    $ module load java
     $ ~ashay/apps/PerfExpert/perfexpert <threshold-between-0-and-1> <experiment.xml>
    
 
