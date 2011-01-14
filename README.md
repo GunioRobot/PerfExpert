@@ -49,9 +49,9 @@ If you want to change what happens between multiple runs of your program, use th
     program_name="./my-executable"
     arguments="arg1 arg2 ..."
    
-    # If there is a pre-generated structure file from hpcstruct, include it here
+    # If there is a pre-generated structure file from hpcstruct, paste the absolute path to it in the variable below
     # OPTIONAL:
-    hpcstruct_file="path to struct file"
+    hpcstruct_file=""
    
     #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX#
     #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX#
