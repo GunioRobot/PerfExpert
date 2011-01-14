@@ -144,6 +144,6 @@ If the run completed successfully, there should be a file by the name: `experime
 
 # Feedback
 If things don't work as expected or if you have suggestions, contact me at: `ashay.rane [at] tacc` or on: `471-4024`. Please try to include the following in your report:
- * experiment.xml file that is being passed to PerfExpert
- * Error printed on the console
- * perfexpert.log (present in the directory from where `~ashay/apps/PerfExpert/perfexpert` was run
+*   experiment.xml file that is being passed to PerfExpert
+*   Error printed on the console
+*   perfexpert.log (present in the directory from where `~ashay/apps/PerfExpert/perfexpert` was run
