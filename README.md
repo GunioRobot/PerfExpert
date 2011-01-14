@@ -61,15 +61,15 @@ If you want to change what happens between multiple runs of your program, use th
     #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX#
     #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX#
     # Event parameters to each run of hpcrun
-    experiment[0]="-e PAPI_TOT_CYC:13000027 -e PAPI_TOT_INS:13000049 -e PAPI_TLB_DM:510007 -e PAPI_TLB_IM:510031"
-    experiment[1]="-e PAPI_TOT_CYC:13000027 -e PAPI_L1_DCA:5300003 -e PAPI_L2_DCA:1300021 -e PAPI_L2_DCM:510007"
-    experiment[2]="-e PAPI_TOT_CYC:13000027 -e PAPI_L1_ICA:5300003 -e PAPI_L2_ICA:1300021 -e PAPI_L2_ICM:510007"
-    experiment[3]="-e PAPI_TOT_CYC:13000027 -e PAPI_BR_INS:2300017 -e PAPI_BR_MSP:510007"
-    experiment[4]="-e PAPI_TOT_CYC:13000027 -e PAPI_FAD_INS:5300003 -e PAPI_FML_INS:5300027 -e PAPI_FDV_INS:510007"
+    experiment[0]="--event PAPI_TOT_CYC:13000027 --event PAPI_TOT_INS:13000049 --event PAPI_TLB_DM:510007 --event PAPI_TLB_IM:510031"
+    experiment[1]="--event PAPI_TOT_CYC:13000027 --event PAPI_L1_DCA:5300003 --event PAPI_L2_DCA:1300021 --event PAPI_L2_DCM:510007"
+    experiment[2]="--event PAPI_TOT_CYC:13000027 --event PAPI_L1_ICA:5300003 --event PAPI_L2_ICA:1300021 --event PAPI_L2_ICM:510007"
+    experiment[3]="--event PAPI_TOT_CYC:13000027 --event PAPI_BR_INS:2300017 --event PAPI_BR_MSP:510007"
+    experiment[4]="--event PAPI_TOT_CYC:13000027 --event PAPI_FAD_INS:5300003 --event PAPI_FML_INS:5300027 --event PAPI_FDV_INS:510007"
    
     # Location of hpcrun, hpcstruct and hpcprof binaries
     main_location="${HOME}/.perfexpert/perfexpert.properties"
-    alt_location="/ops/apps/perfexpert/perfexpert.properties"
+    alt_location="/opt/apps/perfexpert/perfexpert.properties"
    
     hpctoolkit_location=`(grep "^HPCTOOLKIT_LOCATION" "${main_location}" | sed -e 's/HPCTOOLKIT_LOCATION[\t ]*=[\t ]*\(.*\)/\1/') 2> /dev/null`
    
