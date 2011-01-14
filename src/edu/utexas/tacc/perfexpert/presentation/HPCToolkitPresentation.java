@@ -185,23 +185,23 @@ public class HPCToolkitPresentation
 	
 	private static void printBar(double value1, double value2, double cpiThreshold)
 	{
-		value1 *= 5 / cpiThreshold;
-		value2 *= 5 / cpiThreshold;
+		value1 *= 10 / cpiThreshold;
+		value2 *= 10 / cpiThreshold;
 		
 		if (value1 < 1)	value1 = 1;
 		if (value2 < 1)	value2 = 1;
 
 		char term = ' ';
-		if (value1 > 47)
+		if (value1 > 51)
 		{
 			term = '+';
-			value1 = 46;
+			value1 = 50;
 		}
 
-		if (value2 > 47)
+		if (value2 > 51)
 		{
 			term = '+';
-			value2 = 46;
+			value2 = 50;
 		}
 
 		double min = value1 < value2 ? value1 : value2;
