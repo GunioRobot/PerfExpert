@@ -44,8 +44,6 @@ Also, as you would note, the job execution time now needs to be higher than befo
 If you want to change what happens between multiple runs of your program, use the following instead of using `perfexpert_run_exp`:<br/>
 
    
-    #!/usr/bin/env bash
-   
     program_name="./my-executable"
     arguments="arg1 arg2 ..."
    
