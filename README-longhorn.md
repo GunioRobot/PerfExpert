@@ -120,7 +120,7 @@ If you want to change what happens between multiple runs of your program, use th
             eval ${cmd}
     done
    
-    ${HPCTOOLKIT_BIN}/hpcprof --metric=thread --struct ${tempDir}/hpcstruct --output ${tempDir}/database ${tempDir}/measurements
+    ${HPCTOOLKIT_BIN}/hpcprof --force-metric --metric=thread --struct ${tempDir}/hpcstruct --output ${tempDir}/database ${tempDir}/measurements
    
     # Get the final experiment.xml here
     mv ${tempDir}/database/experiment.xml ./experiment-$JOB_NAME.o$JOB_ID.xml
