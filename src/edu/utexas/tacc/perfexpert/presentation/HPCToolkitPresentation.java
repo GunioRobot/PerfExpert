@@ -36,9 +36,13 @@ import edu.utexas.tacc.perfexpert.parsing.profiles.hpctoolkit.HPCToolkitProfileC
 
 public class HPCToolkitPresentation
 {
+	static short maxBarWidth = 47;
+	enum Metric { METRIC_RATIO, METRIC_LCPI };
 	static Logger log = Logger.getLogger( HPCToolkitPresentation.class );
 	public static void presentSummaryProfiles(List<HPCToolkitProfile> profiles01, List<HPCToolkitProfile> profiles02, LCPIConfigManager lcpiConfig, MachineConfigManager machineConfig)
 	{
+		Metric metricType;
+
 		if (profiles01 == null || profiles01.size() == 0)
 		{
 			log.error("Received empty profiles as input, terminating...");
@@ -99,7 +103,7 @@ public class HPCToolkitPresentation
 				System.out.println("\n" + profile.getCodeSectionInfo() + " (runtimes are " + doubleFormat.format(cycles/cpuFrequency) + "s and " + doubleFormat.format(cycles2/cpuFrequency) + "s)");
 			}
 
-			System.out.println("--------------------------------------------------------------------------------");
+			System.out.println("===============================================================================");
 
 			double maxVariation = matchingProfile == null ? profile.getVariation() : (profile.getVariation() > matchingProfile.getVariation() ? profile.getVariation() : matchingProfile.getVariation());
 			if (maxVariation > 0.2)
@@ -114,83 +118,123 @@ public class HPCToolkitPresentation
 			double cpi = cycles / instructions;
 			if (cpi <= dCPIThreshold)
 				System.out.println("The performance of this code section is good");
-			else
+
+			boolean printRatioHeader = false, printPerfHeader = false;
+			// Compute each LCPI metric
+			for (String LCPI : lcpiConfig.getLCPINames())
 			{
-				System.out.println (String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s  LCPI good......okay......fair......poor......bad....", "performance assessment"));
-				// Compute each LCPI metric
-
-				for (String LCPI : lcpiConfig.getLCPINames())
+				String category, subcategory;
+				int indexOfPeriod = LCPI.indexOf(".");
+				if (indexOfPeriod < 0)
 				{
-					String category, subcategory;
-					int indexOfPeriod = LCPI.indexOf("."); 
-					if (indexOfPeriod < 0)
-					{
-						category = "overall";
-						subcategory = LCPI;
-					}
-					else
-					{
-						category = LCPI.substring(0, indexOfPeriod);
-						subcategory = LCPI.substring(indexOfPeriod+1);
-					}
+					category = "overall";
+					subcategory = LCPI;
+				}
+				else
+				{
+					category = LCPI.substring(0, indexOfPeriod);
+					subcategory = LCPI.substring(indexOfPeriod+1);
+				}
 
-					String formula = lcpiConfig.getProperties().getProperty(LCPI);
-					int index = lcpiTranslation.get(LCPI);
-	
-					double result01 = 0;
+				String formula = lcpiConfig.getProperties().getProperty(LCPI);
+				int index = lcpiTranslation.get(LCPI);
+
+				double result01 = 0;
+				try
+				{
+					result01 = Double.valueOf(doubleFormat.format(mathParser.parse(formula, profile, machineConfig.getProperties())));
+				}
+				catch (ParseException e)
+				{
+					log.error("Error in parsing expression: " + formula + "\nDefaulting value of " + LCPI + " to zero.\n[" + e.getMessage() + "]\n" + e.getStackTrace());
+				}
+
+				profile.setLCPI(index, result01);
+				log.debug(profile.getCodeSectionInfo() + ": " + category + "." + subcategory + " = " + result01);
+
+				double result02 = result01;
+				if (matchingProfile != null)
+				{
 					try
 					{
-						result01 = Double.valueOf(doubleFormat.format(mathParser.parse(formula, profile, machineConfig.getProperties()))); 
+						result02 = Double.valueOf(doubleFormat.format(mathParser.parse(formula, matchingProfile, machineConfig.getProperties())));
 					}
 					catch (ParseException e)
 					{
 						log.error("Error in parsing expression: " + formula + "\nDefaulting value of " + LCPI + " to zero.\n[" + e.getMessage() + "]\n" + e.getStackTrace());
 					}
 	
-					profile.setLCPI(index, result01);
-					log.debug(profile.getCodeSectionInfo() + ": " + category + "." + subcategory + " = " + result01);
-					
-					double result02 = result01;
-					if (matchingProfile != null)
-					{
-						try
-						{
-							result02 = Double.valueOf(doubleFormat.format(mathParser.parse(formula, matchingProfile, machineConfig.getProperties()))); 
-						}
-						catch (ParseException e)
-						{
-							log.error("Error in parsing expression: " + formula + "\nDefaulting value of " + LCPI + " to zero.\n[" + e.getMessage() + "]\n" + e.getStackTrace());
-						}
-		
-						matchingProfile.setLCPI(index, result02);
-						log.debug(matchingProfile.getCodeSectionInfo() + ": " + category + "." + subcategory + " = " + result02);
-					}
+					matchingProfile.setLCPI(index, result02);
+					log.debug(matchingProfile.getCodeSectionInfo() + ": " + category + "." + subcategory + " = " + result02);
+				}
 
-					if (subcategory.regionMatches(true, 0, "overall", 0, subcategory.length())) 
+				String fCategory = category.replaceAll("_", " ");
+				String fSubcategory = subcategory.replaceAll("_", " ");
+
+				if (category.regionMatches(true, 0, "ratio", 0, category.length()))
+				{
+					metricType = Metric.METRIC_RATIO;
+					if (printRatioHeader == false)
 					{
-						// Print the category name
-						System.out.print(String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s: ", "* " + category.replaceAll("_", " ")));
+						// Print ratio header
+						System.out.println (String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s  %%age 0.........25...........50.........75........100", "ratio to total instrns"));
+						printRatioHeader = true;
+					}
+				}
+				else
+				{
+					metricType = Metric.METRIC_LCPI;
+					if (printPerfHeader == false)
+					{
+						// Print perf header
+						System.out.println("\n-------------------------------------------------------------------------------");
+						System.out.println (String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s  LCPI good......okay......fair......poor......bad....", "performance assessment"));
+						printPerfHeader = true;
+					}
+				}
+
+				if (subcategory.regionMatches(true, 0, "overall", 0, subcategory.length()))
+				{
+					// Print the category name
+					System.out.print(String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s: ", "* " + fCategory));
+				}
+				else
+					System.out.print(String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s: ", "   - " + fSubcategory));
+
+				if (matchingProfile == null)
+				{
+					if (metricType == Metric.METRIC_RATIO)
+					{
+						// FIXME: L1_DCA / TOT_INS ration going beyond 100% in some cases
+
+						// Cap values to 100
+						if (result01 > 1)	result01 = 1;
+						if (result02 > 1)	result02 = 1;
+
+						System.out.print(String.format("%4.0f ", result01*100));
+						printRatioBar(result01*100, result02*100, dCPIThreshold);
 					}
 					else
-						System.out.print(String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s: ", "   - " + subcategory.replaceAll("_", " ")));
-
-					if (matchingProfile == null)
+					{
 						System.out.print(String.format("%4.1f ", result01));
-					else
-						System.out.print("     ");
-
-					printBar(result01, result02, dCPIThreshold);
-					
-					if (category.regionMatches(true, 0, "overall", 0, category.length()))
-					{
-						// Print line about upper bounds
-						System.out.println("upper bound estimates");
+						printLCPIBar(result01, result02, dCPIThreshold);
 					}
+				}
+				else
+				{
+					System.out.print("     ");
+					printLCPIBar(result01, result02, dCPIThreshold);
+				}
+
+				if (category.regionMatches(true, 0, "overall", 0, category.length()))
+				{
+					// Print line about upper bounds
+					System.out.println("upper bound estimates");
 				}
 			}
 		}
 	}
-	
+
 	private static HPCToolkitProfile getMatchingProfile(HPCToolkitProfile needle, List<HPCToolkitProfile> smallHaystack)
 	{
 		if (smallHaystack == null)
@@ -203,8 +247,56 @@ public class HPCToolkitPresentation
 		
 		return null;
 	}
-	
-	private static void printBar(double value1, double value2, double cpiThreshold)
+
+	private static void printRatioBar(double value1, double value2, double cpiThreshold)
+	{
+		// Scale to maxBarWidth
+		value1 *= maxBarWidth / 100.0;
+		value2 *= maxBarWidth / 100.0;
+
+		if (value1 < 1)	value1 = 1;
+		if (value2 < 1)	value2 = 1;
+
+		char term = ' ';
+		if (value1 > maxBarWidth)
+		{
+			term = '+';
+			value1 = maxBarWidth-1;
+		}
+
+		if (value2 > maxBarWidth)
+		{
+			term = '+';
+			value2 = maxBarWidth-1;
+		}
+
+		double min = value1 < value2 ? value1 : value2;
+		value1 -= min;
+		value2 -= min;
+
+		while(min-- > 0.5)
+			System.out.print('*');
+
+		if (value1 > 0)
+		{
+			value1 += min;
+			while (value1-- > 0.5)
+				System.out.print(1);
+		}
+		else
+		{
+			value2 += min;
+			while (value2-- > 0.5)
+				System.out.print(2);
+		}
+
+		if (term != ' ')
+			System.out.print(term);
+
+		System.out.print("\n");
+	}
+
+	private static void printLCPIBar(double value1, double value2, double cpiThreshold)
 	{
 		value1 *= 10 / cpiThreshold;
 		value2 *= 10 / cpiThreshold;
@@ -213,24 +305,24 @@ public class HPCToolkitPresentation
 		if (value2 < 1)	value2 = 1;
 
 		char term = ' ';
-		if (value1 > 51)
+		if (value1 > maxBarWidth)
 		{
 			term = '+';
-			value1 = 50;
+			value1 = maxBarWidth-1;
 		}
 
-		if (value2 > 51)
+		if (value2 > maxBarWidth)
 		{
 			term = '+';
-			value2 = 50;
+			value2 = maxBarWidth-1;
 		}
 
 		double min = value1 < value2 ? value1 : value2;
 		value1 -= min;
 		value2 -= min;
-		
+
 		while(min-- > 0.5)
-			System.out.print(">");
+			System.out.print('>');
 
 		if (value1 > 0)
 		{
