@@ -177,7 +177,7 @@ public class HPCToolkitPresentation
 					if (printRatioHeader == false)
 					{
 						// Print ratio header
-						System.out.println (String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s  %%age 0.........25...........50.........75........100", "ratio to total instrns"));
+						System.out.println (String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s    %%  0.........25...........50.........75........100", "ratio to total instrns"));
 						printRatioHeader = true;
 					}
 				}
