@@ -129,7 +129,7 @@ double term(HPCToolkitProfile profile, Properties machineConfig):
 	a=unary(profile, machineConfig)
 	(
 		"*" b=term(profile, machineConfig)	{ a *= b; }
-	|	"/" b=term(profile, machineConfig)	{ a /= b; }
+	|	"/" b=term(profile, machineConfig)	{ if (b != 0) a /= b; }
 	)*
 				{ return a; }
 }
