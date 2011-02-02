@@ -347,6 +347,6 @@ int main(int argc, char* argv [])
 
 	fclose(fp);
 
-	fprintf (stderr, "Geneted LCPI and experiment files\n");
+	fprintf (stderr, "Generated LCPI and experiment files\n");
 	return 0;
 }
