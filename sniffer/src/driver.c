@@ -329,7 +329,7 @@ int main(int argc, char* argv [])
 					if (remaining == 0)	// New line
 						fprintf (fp, "experiment[%d]=\"", exp_count);
 
-					if (j == TOT_INS)	fprintf (fp, "--event=%s:13000049 ", counter_names[j]);
+					if (j == TOT_CYC)	fprintf (fp, "--event=%s:13000047 ", counter_names[j]);
 					else			fprintf (fp, "--event=%s:%d ", counter_names[j], rel_primes[remaining%4]);
 				}
 
