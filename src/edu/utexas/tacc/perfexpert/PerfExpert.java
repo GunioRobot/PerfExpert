@@ -23,6 +23,8 @@ package edu.utexas.tacc.perfexpert;
 
 import java.io.File;
 import java.util.List;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 import org.apache.log4j.Logger;
 
@@ -38,7 +40,23 @@ public class PerfExpert
 	public static void main(String[] args) throws Exception
 	{
 		Logger log = Logger.getLogger( PerfExpert.class );
-		
+
+		String PERFEXPERT_HOME="";
+		ClassLoader loader = PerfExpert.class.getClassLoader();
+		String regex = "jar:file:(.*)/bin/perfexpert.jar!/edu/utexas/tacc/perfexpert/PerfExpert.class";
+		String jarURL = loader.getResource("edu/utexas/tacc/perfexpert/PerfExpert.class").toString();
+
+		Pattern p = Pattern.compile(regex);
+		Matcher m = p.matcher(jarURL);
+
+		if (m.find())
+			PERFEXPERT_HOME = m.group(1);
+		else
+		{
+			log.error("Could not extract location of PerfExpert jar from URL: (" + jarURL + "), was using the regex: \"" + regex + "\"");
+			System.exit(1);
+		}
+
 		if (args.length < 2 || args.length > 3)
 		{
 			System.out.println("USAGE: PerfExpert threshold first-input-file [second-input-file]");
@@ -97,13 +115,6 @@ public class PerfExpert
 		PerfExpertConfigManager peConfig = new PerfExpertConfigManager("file://" + peConfigLocation + "/perfexpert.properties");
 		peConfig.readConfigSource();
 
-		String CONFIG_LOCATION = peConfig.getProperties().getProperty("CONFIG_LOCATION");
-		if (CONFIG_LOCATION == null || CONFIG_LOCATION.isEmpty())
-		{
-			log.error("CONFIG_LOCATION was not set in " + peConfigLocation + "/perfexpert.properties, cannot proceed");
-			return;
-		}
-
 		String HPCDATA_LOCATION = peConfig.getProperties().getProperty("HPCDATA_LOCATION");
 		if (HPCDATA_LOCATION == null || HPCDATA_LOCATION.isEmpty())
 		{
@@ -111,11 +122,11 @@ public class PerfExpert
 			return;
 		}
 
-		LCPIConfigManager lcpiConfig = new LCPIConfigManager("file://" + CONFIG_LOCATION + "/lcpi.properties");
+		LCPIConfigManager lcpiConfig = new LCPIConfigManager("file://" + PERFEXPERT_HOME + "/config/lcpi.properties");
 		if (lcpiConfig.readConfigSource() == false)		// Error while reading configuraiton, handled inside method
 			return;
 		
-		MachineConfigManager machineConfig = new MachineConfigManager("file://" + CONFIG_LOCATION + "/machine.properties");
+		MachineConfigManager machineConfig = new MachineConfigManager("file://" + PERFEXPERT_HOME + "/config/machine.properties");
 		if (machineConfig.readConfigSource() == false)		// Error while reading configuraiton, handled inside method
 			return;
 		
