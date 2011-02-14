@@ -290,7 +290,7 @@ int main(int argc, char* argv [])
 
 	int rel_primes [4] = { 510007, 510009, 530003, 510013 };
 
-	fp = fopen ("experiment.header", "w");
+	fp = fopen ("experiment.header.tmp", "w");
 	if (fp == NULL)
 	{
 		fprintf (stderr, "Could not open file experiment.header for writing, terminaing...\n");
@@ -327,10 +327,10 @@ int main(int argc, char* argv [])
 				{
 					counter_present[j] = COUNTER_ADDED;
 					if (remaining == 0)	// New line
-						fprintf (fp, "experiment[%d]=\"", exp_count);
+						fprintf (fp, "experiment[%d]=\\\"", exp_count);
 
-					if (j == TOT_CYC)	fprintf (fp, "--event=%s:13000047 ", counter_names[j]);
-					else			fprintf (fp, "--event=%s:%d ", counter_names[j], rel_primes[remaining%4]);
+					if (j == TOT_CYC)	fprintf (fp, "--event %s:13000047 ", counter_names[j]);
+					else			fprintf (fp, "--event %s:%d ", counter_names[j], rel_primes[remaining%4]);
 				}
 
 				remaining++;
@@ -342,7 +342,7 @@ int main(int argc, char* argv [])
 		}
 
 		exp_count++;
-		if (remaining > 0)	fprintf (fp, "--event=PAPI_TOT_INS:13000027\"\n");
+		if (remaining > 0)	fprintf (fp, "--event PAPI_TOT_INS:13000027\\\"\\n");
 	} while (remaining > 0);
 
 	fclose(fp);
