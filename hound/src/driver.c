@@ -263,7 +263,8 @@ int main( int argc, char * argv[] )
 
 	// Version string
 	printf ("version = 1.0\n\n");
-	printf ("CPU_threshold = 0.5\n");
+	printf ("# Generated using hound\n");
+	printf ("CPI_threshold = 0.5\n");
 
 	if (processor == PROC_UNKNOWN)
 		discoverCachesWithoutCPUID();	// Also prints values
