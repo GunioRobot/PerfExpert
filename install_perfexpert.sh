@@ -25,6 +25,9 @@ else
 	echo "Using shell variable \${PERFEXPERT_HOME} set to \"${PERFEXPERT_HOME}\""
 fi
 
+# For making this work while building RPMs
+PERFEXPERT_HOME="${RPM_BUILD_ROOT}${PERFEXPERT_HOME}"
+
 # If path does not exist, create it
 if [ ! -d "${PERFEXPERT_HOME}" ]
 then
@@ -61,29 +64,14 @@ install ./lib/log4j.properties "${PERFEXPERT_HOME}/lib/log4j.properties"
 if [ "x${PERFEXPERT_GLOBAL_INSTALL}" == "x" ]
 then
 	echo "The shell variable \${PERFEXPERT_GLOBAL_INSTALL} was not set to either \"Yes\" or \"No\", defaulting to \"Yes\""
-	PROPERTIES_HOME="/opt/apps/perfexpert"
-
-#	read -p "Install system-wide, for all users? (requires write access to /opt/apps) [Y/n]: " global
-#
-#	# If its empty, set it to "yes"
-#	if [ "x${global}" == "x" ]
-#	then
-#		global="Y"
-#	fi
-#
-#	if [ ${global:0:1} == "n" -o ${global:0:1} == "N" ]
-#	then
-#		PROPERTIES_HOME="${HOME}/.perfexpert"
-#	else
-#		PROPERTIES_HOME="/opt/apps/perfexpert"
-#	fi
+	PROPERTIES_HOME="${RPM_BUILD_ROOT}/opt/apps/perfexpert"
 else
 	echo "Using shell variable \${PERFEXPERT_GLOBAL_INSTALL} set to \"${PERFEXPERT_GLOBAL_INSTALL}\""
 	if [ "${PERFEXPERT_GLOBAL_INSTALL:0:1}" == "Y" -o "${PERFEXPERT_GLOBAL_INSTALL:0:1}" == "y" -o "${PERFEXPERT_GLOBAL_INSTALL}" == "true" -o "${PERFEXPERT_GLOBAL_INSTALL}" == "True" ]
 	then
-		PROPERTIES_HOME="/opt/apps/perfexpert"
+		PROPERTIES_HOME="${RPM_BUILD_ROOT}/opt/apps/perfexpert"
 	else
-		PROPERTIES_HOME="${HOME}/.perfexpert"
+		PROPERTIES_HOME="${RPM_BUILD_ROOT}${HOME}/.perfexpert"
 	fi
 fi
 
