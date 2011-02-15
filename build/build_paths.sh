@@ -24,7 +24,7 @@ then
 	exit 1
 fi
 
-cat > perfexpert.properties << END_HERE
+cat > ../perfexpert.properties << END_HERE
 version = 1.0
 
 # Generated as part of installation
