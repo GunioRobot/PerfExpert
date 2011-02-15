@@ -32,7 +32,7 @@ build-sniffer:
 	cd sniffer/ && make CFLAGS="$(SNIFFER_CFLAGS)" LDFLAGS="$(SNIFFER_LDFLAGS)" && cd ..
 
 paths:
-	cd build/ && build_paths.sh && cd ..
+	cd build/ && ./build_paths.sh && cd ..
 
 install:
 	./install_perfexpert.sh
