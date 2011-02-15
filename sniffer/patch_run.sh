@@ -15,7 +15,7 @@ then
 fi
 
 replaceHook="___EXPERIMENT_HEADER___"
-searchString=`grep ${replaceHook} ../perfexpert_run_exp.default`
+searchString=`grep ${replaceHook} perfexpert_run_exp.default`
 
 curr_dir=`pwd`
 parent_dir=${curr_dir%/*}
@@ -27,5 +27,8 @@ then
 	echo -e ${HEADER} | sed 's/\\"/\"/g'
 	exit 1
 fi
+
+# Add execute permission
+chmod +x ../perfexpert_run_exp
 
 exit 0

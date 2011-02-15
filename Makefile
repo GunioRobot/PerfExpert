@@ -46,3 +46,4 @@ clean:
 
 distclean:	clean
 	rm -f ./perfexpert_run_exp ./config/machine.properties ./config/lcpi.properties ./perfexpert.properties
+	rm -rf ./config
