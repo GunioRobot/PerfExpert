@@ -238,7 +238,7 @@ public class HPCToolkitPresentation
 						if (result01 > 1)	result01 = 1;
 						if (result02 > 1)	result02 = 1;
 
-						System.out.print(String.format("%4.0f ", result01*100));
+						System.out.print(String.format("     ", result01*100));
 						printRatioBar(result01*100, result02*100, dCPIThreshold);
 					}
 					else
