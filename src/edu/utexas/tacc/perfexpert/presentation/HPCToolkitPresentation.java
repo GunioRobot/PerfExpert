@@ -232,8 +232,20 @@ public class HPCToolkitPresentation
 				}
 				else
 				{
-					System.out.print("     ");
-					printLCPIBar(result01, result02, dCPIThreshold);
+					if (metricType == Metric.METRIC_RATIO)
+					{
+						// Cap values to 100
+						if (result01 > 1)	result01 = 1;
+						if (result02 > 1)	result02 = 1;
+
+						System.out.print(String.format("%4.0f ", result01*100));
+						printRatioBar(result01*100, result02*100, dCPIThreshold);
+					}
+					else
+					{
+						System.out.print("     ");
+						printLCPIBar(result01, result02, dCPIThreshold);
+					}
 				}
 
 				if (category.regionMatches(true, 0, "overall", 0, category.length()))
