@@ -83,13 +83,26 @@ public class HPCToolkitPresentation
 			CPIThreshold = "0.5";
 		}
 
+		long cpuFrequency = Long.parseLong(machineConfig.getProperties().getProperty("CPU_freq"));
+
+		if (profiles02 == null)
+		{
+			for (HPCToolkitProfile profile : profiles01)
+			{
+				if (profile.getCodeSectionInfo().equals("Aggregate"))
+				{
+					System.out.println ("Total running time is " + doubleFormat.format(profile.getMetricBasedOnPEIndex(indexOfCycles)/cpuFrequency) + " sec");
+					break;
+				}
+			}
+		}
+
 		double dCPIThreshold = Double.parseDouble(CPIThreshold);
 		for (HPCToolkitProfile profile : profiles01)
 		{
 			if (profile.getCodeSectionInfo().equals("Aggregate") || profile.getImportance() == -1)
 				continue;
 
-			long cpuFrequency = Long.parseLong(machineConfig.getProperties().getProperty("CPU_freq"));
 			double cycles = profile.getMetricBasedOnPEIndex(indexOfCycles);			
 			double instructions = profile.getMetricBasedOnPEIndex(indexOfInstructions);
 
