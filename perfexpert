@@ -2,10 +2,10 @@
 
 PERFEXPERT_HOME=`dirname ${0}`;
 
-# Check if we have HPCTOOLKIT_HOME and HPCDATA_HOME pointing correctly
-if [ "x${HPCDATA_HOME}" == "x" ]
+# Check if we have PERFEXPERT_HPCDATA_HOME pointing correctly
+if [ "x${PERFEXPERT_HPCDATA_HOME}" == "x" ]
 then
-	echo "The environment variable \${HPCDATA_HOME} was not set, exiting..."
+	echo "The environment variable \${PERFEXPERT_HPCDATA_HOME} was not set, exiting..."
 	exit 1
 fi
 

@@ -15,11 +15,11 @@ ___EXPERIMENT_HEADER___
 #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX#
 #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX#
 
-hpctoolkit_location=${HPCTOOLKIT_HOME}
+hpctoolkit_location=${PERFEXPERT_HPCTOOLKIT_HOME}
 
 if [ "x${hpctoolkit_location}" == "x" ]
 then
-	echo "Could not find HPCTOOLKIT_HOME defined as an environment variable, exiting..."
+	echo "Could not find PERFEXPERT_HPCTOOLKIT_HOME defined as an environment variable, exiting..."
 	exit 1
 fi
 

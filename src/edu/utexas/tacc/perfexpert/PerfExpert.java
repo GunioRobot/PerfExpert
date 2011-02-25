@@ -99,10 +99,10 @@ public class PerfExpert
 
 		log.debug("PerfExpert invoked with arguments: " + threshold + ", " + filename01 + ", " + filename02);
 
-		String HPCDATA_LOCATION = System.getenv("HPCDATA_HOME");
+		String HPCDATA_LOCATION = System.getenv("PERFEXPERT_HPCDATA_HOME");
 		if (HPCDATA_LOCATION == null || HPCDATA_LOCATION.isEmpty())
 		{
-			log.error("The environment variable ${HPCDATA_HOME} was not set, cannot proceed");
+			log.error("The environment variable ${PERFEXPERT_HPCDATA_HOME} was not set, cannot proceed");
 			return;
 		}
 
