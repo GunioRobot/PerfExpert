@@ -12,7 +12,7 @@ ifneq ($(strip $(PAPI_LIBS)),)
 SNIFFER_LDFLAGS+=-L $(PAPI_LIBS)
 endif
 
-all:	jar hound sniffer paths
+all:	jar hound sniffer
 
 jar:
 	$(ANT_LOCATION) -f ./build/build.xml jar
@@ -30,9 +30,6 @@ sniffer:	build-sniffer
 
 build-sniffer:
 	cd sniffer/ && make CFLAGS="$(SNIFFER_CFLAGS)" LDFLAGS="$(SNIFFER_LDFLAGS)" && cd ..
-
-paths:
-	cd build/ && ./build_paths.sh && cd ..
 
 install:
 	./install_perfexpert.sh

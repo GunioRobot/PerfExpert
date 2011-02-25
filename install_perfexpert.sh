@@ -3,14 +3,13 @@
 # Uses ${PERFEXPERT_HOME} and ${PERFEXPERT_GLOBAL_INSTALL}
 
 # First check if all required files are present
-if [ ! -f ./perfexpert_run_exp -o ! -f ./config/machine.properties -o ! -f ./config/lcpi.properties -o ! -f ./bin/perfexpert.jar -o ! -f ./perfexpert.properties -o ! -f ./perfexpert ]
+if [ ! -f ./perfexpert_run_exp -o ! -f ./config/machine.properties -o ! -f ./config/lcpi.properties -o ! -f ./bin/perfexpert.jar -o ! -f ./perfexpert ]
 then
 	echo "One of the following files was not found, did \`make all' run without errors?"
 	echo -e "`pwd`/perfexpert_run_exp"
 	echo -e "`pwd`/config/machine.properties"
 	echo -e "`pwd`/config/lcpi.properties"
 	echo -e "`pwd`/bin/perfexpert.jar"
-	echo -e "`pwd`/perfexpert.properties"
 	echo -e "`pwd`/perfexpert"
 	exit 1
 fi
@@ -61,31 +60,4 @@ install ./perfexpert "${PERFEXPERT_HOME}/perfexpert"
 install ./lib/log4j-1.2.16.jar "${PERFEXPERT_HOME}/lib/log4j-1.2.16.jar"
 install ./lib/log4j.properties "${PERFEXPERT_HOME}/lib/log4j.properties"
 
-if [ "x${PERFEXPERT_GLOBAL_INSTALL}" == "x" ]
-then
-	echo "The shell variable \${PERFEXPERT_GLOBAL_INSTALL} was not set to either \"Yes\" or \"No\", defaulting to \"Yes\""
-	PROPERTIES_HOME="${RPM_BUILD_ROOT}/opt/apps/perfexpert"
-else
-	echo "Using shell variable \${PERFEXPERT_GLOBAL_INSTALL} set to \"${PERFEXPERT_GLOBAL_INSTALL}\""
-	if [ "${PERFEXPERT_GLOBAL_INSTALL:0:1}" == "Y" -o "${PERFEXPERT_GLOBAL_INSTALL:0:1}" == "y" -o "${PERFEXPERT_GLOBAL_INSTALL}" == "true" -o "${PERFEXPERT_GLOBAL_INSTALL}" == "True" ]
-	then
-		PROPERTIES_HOME="${RPM_BUILD_ROOT}/opt/apps/perfexpert"
-	else
-		PROPERTIES_HOME="${RPM_BUILD_ROOT}${HOME}/.perfexpert"
-	fi
-fi
-
-# Create directory if it does not exist
-if [ ! -d "${PROPERTIES_HOME}" ]
-then
-	mkdir -p "${PROPERTIES_HOME}"
-	if [ ${?} != "0" ]
-	then
-		echo "Error creating directory: \"${PROPERTIES_HOME}\", exiting..."
-		exit 1
-	fi
-fi
-
-install ./perfexpert.properties "${PROPERTIES_HOME}/perfexpert.properties"
-
-echo -e "\nPerfExpert installation is complete! You can now use PerfExpert from \"${PERFEXPERT_HOME}\".\nFor usage guide, please refer: https://webspace.utexas.edu/asr596/www/perfexpert/blog/2011/02/07/PerfExpert-Usage-Guide.html"
+echo -e "\nPerfExpert installation is complete! You can now use PerfExpert from \"${PERFEXPERT_HOME}\".\nFor usage guide, please refer: http://www.tacc.utexas.edu/perfexpert/perfexpert-usage-guide/"

@@ -15,21 +15,12 @@ ___EXPERIMENT_HEADER___
 #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX#
 #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX#
 
-# Location of hpcrun, hpcstruct and hpcprof binaries 
-main_location="${HOME}/.perfexpert/perfexpert.properties"
-alt_location="/opt/apps/perfexpert/perfexpert.properties";
-
-hpctoolkit_location=`(grep "^HPCTOOLKIT_LOCATION" "${main_location}" | sed -e 's/HPCTOOLKIT_LOCATION[\t ]*=[\t ]*\(.*\)/\1/') 2> /dev/null`
+hpctoolkit_location=${HPCTOOLKIT_HOME}
 
 if [ "x${hpctoolkit_location}" == "x" ]
 then
-	# Check the home dir
-	hpctoolkit_location=`(grep "^HPCTOOLKIT_LOCATION" "${alt_location}" | sed -e 's/HPCTOOLKIT_LOCATION[\t ]*=[\t ]*\(.*\)/\1/') 2> /dev/null`
-	if [ "x${hpctoolkit_location}" == "x" ]
-	then
-		echo "Could not find HPCTOOLKIT_LOCATION specified in either \"${main_location}\" or \"${alt_location}\", exiting..."
-		exit 1
-	fi
+	echo "Could not find HPCTOOLKIT_HOME defined as an environment variable, exiting..."
+	exit 1
 fi
 
 HPCTOOLKIT_BIN=${hpctoolkit_location}/bin
@@ -53,7 +44,7 @@ then
 
 	if [ ! -f ${hpcstruct_file} ]
 	then
-		echo "Could not find hpc struct file: ${hpcstruct_file}, try entering the absolute path";
+		echo "Could not find hpcstruct file: ${hpcstruct_file}, try entering the absolute path";
 		exit 1;
 	fi
 

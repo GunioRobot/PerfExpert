@@ -99,26 +99,10 @@ public class PerfExpert
 
 		log.debug("PerfExpert invoked with arguments: " + threshold + ", " + filename01 + ", " + filename02);
 
-		String peConfigLocation = "/opt/apps/perfexpert";
-		if (!new File(peConfigLocation + "/perfexpert.properties").exists())
-		{
-			// Try home dir
-			peConfigLocation = System.getProperty("user.home") + "/.perfexpert";
-			if (!new File(peConfigLocation + "/perfexpert.properties").exists())
-			{
-				// Could not find in the alternate location also, give up
-				log.error("Could not find seed configuration file perfexpert.properties in either /opt/apps/perfexpert or " + peConfigLocation + ", terminating...");
-				return;
-			}
-		}
-		
-		PerfExpertConfigManager peConfig = new PerfExpertConfigManager("file://" + peConfigLocation + "/perfexpert.properties");
-		peConfig.readConfigSource();
-
-		String HPCDATA_LOCATION = peConfig.getProperties().getProperty("HPCDATA_LOCATION");
+		String HPCDATA_LOCATION = System.getenv("HPCDATA_HOME");
 		if (HPCDATA_LOCATION == null || HPCDATA_LOCATION.isEmpty())
 		{
-			log.error("HPCDATA_LOCATION was not set in " + peConfigLocation + "/perfexpert.properties, cannot proceed");
+			log.error("The environment variable ${HPCDATA_HOME} was not set, cannot proceed");
 			return;
 		}
 
