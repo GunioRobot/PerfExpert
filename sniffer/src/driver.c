@@ -285,7 +285,7 @@ int main(int argc, char* argv [])
 	int exp_count = 0;
 	int papi_tot_ins_code;
 
-	short remaining;
+	short addCount, remaining;
 	PAPI_event_name_to_code("PAPI_TOT_INS", &papi_tot_ins_code);
 
 	int rel_primes [4] = { 510007, 510009, 530003, 510013 };
@@ -313,6 +313,7 @@ int main(int argc, char* argv [])
 			return 1;
 		}
 
+		addCount = 0;
 		remaining = 0;
 		for (j=0; j<ENUM_LENGTH; j++)
 		{
@@ -325,6 +326,7 @@ int main(int argc, char* argv [])
 				PAPI_event_name_to_code(counter_names[j], &event_code);
 				if (PAPI_add_event(event_set, event_code) == PAPI_OK)
 				{
+					addCount++;
 					counter_present[j] = COUNTER_ADDED;
 					if (remaining == 0)	// New line
 						fprintf (fp, "experiment[%d]=\\\"", exp_count);
@@ -341,12 +343,25 @@ int main(int argc, char* argv [])
 			}
 		}
 
+		if (addCount == 0 && remaining > 0)	// Some events remain but could not be added to the event set
+		{
+			fprintf (stderr, "ERROR: The following events are available but could not be added to the event set:\n");
+			for (j=0; j<ENUM_LENGTH; j++)
+				if (counter_present[j] == COUNTER_USED)
+					fprintf (stderr, "%s ", counter_names[j]);
+
+			fprintf (stderr, "\n");
+			break;
+		}
+
 		exp_count++;
 		if (remaining > 0)	fprintf (fp, "--event PAPI_TOT_INS:13000027\\\"\\n");
 	} while (remaining > 0);
 
 	fclose(fp);
 
-	fprintf (stderr, "Generated LCPI and experiment files\n");
+	if (addCount != 0)
+		fprintf (stderr, "Generated LCPI and experiment files\n");
+
 	return 0;
 }
