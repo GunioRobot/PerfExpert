@@ -111,8 +111,21 @@ public class HPCToolkitProfile extends AProfile implements Comparable<HPCToolkit
 	
 	private void setMetricBasedOnPEIndex(int PEIndex, double value)
 	{
-		perfValues[PEIndex] += value;
-		counts[PEIndex]++;
+		// Do a quick check if this value should be counted
+		double average = perfValues[PEIndex]/counts[PEIndex];
+		double ratio = average / value;
+
+		if (ratio < 0.3)
+		{
+			// Erase other values and use this one from fresh
+			perfValues[PEIndex] = value;
+			counts[PEIndex] = 1;
+		}
+		else
+		{
+			perfValues[PEIndex] += value;
+			counts[PEIndex]++;
+		}
 		
 		if (PEIndex == profileConstants.indexOfInstructions)
 		{
