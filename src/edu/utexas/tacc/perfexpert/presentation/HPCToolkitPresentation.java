@@ -112,7 +112,9 @@ public class HPCToolkitPresentation
 				System.out.println("\n" + profile.getCodeSectionInfo() + " (" + doubleFormat.format(profile.getImportance()*100) + "% of the total runtime)");
 			else
 			{
-				double cycles2 = matchingProfile.getMetricBasedOnPEIndex(indexOfCycles);
+				Integer indexOfCycles2 = profiles02.get(0).getConstants().getPerfCounterTranslation().get("PAPI_TOT_CYC");
+				double cycles2 = matchingProfile.getMetricBasedOnPEIndex(indexOfCycles2);
+
 				System.out.println("\n" + profile.getCodeSectionInfo() + " (runtimes are " + doubleFormat.format(cycles/cpuFrequency) + "s and " + doubleFormat.format(cycles2/cpuFrequency) + "s)");
 			}
 
