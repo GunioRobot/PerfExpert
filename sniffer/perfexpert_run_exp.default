@@ -69,6 +69,13 @@ fi
 # Put everything into a temporary directory instead of clobbering the working directory
 tempDir=`mktemp -d .perfexpert-temp-XXXXXXX`;
 
+# If for some reason tempDir was not set, set it to a default
+if [ "x${tempDir}" == "x" ]
+then
+        tempDir=".perfexpert-temp"
+        mkdir "${tempDir}"
+fi
+
 # Just to be sure, we remove any files which might previously exist
 rm -rf ${tempDir}/*;
 
