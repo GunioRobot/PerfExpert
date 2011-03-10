@@ -104,22 +104,26 @@ int getNumberOfProcessors()
 
 int isCPUIDSupported()
 {
-        int supported = 2;
-        asm (
-                "pushfl\n\t"
-                "popl   %%eax\n\t"
-                "movl   %%eax, %%ecx\n\t"
-                "xorl   $0x200000, %%eax\n\t"
-                "pushl  %%eax\n\t"
-                "popfl\n\t"
+	#ifdef	_NO_CPUID
+		return 0;
+	#else
+	        int supported = 2;
+        	asm (
+	                "pushfl\n\t"
+        	        "popl   %%eax\n\t"
+                	"movl   %%eax, %%ecx\n\t"
+	                "xorl   $0x200000, %%eax\n\t"
+        	        "pushl  %%eax\n\t"
+	                "popfl\n\t"
 
-                "pushfl\n\t"
-                "popl   %%eax\n\t"
-                "xorl   %%ecx, %%eax\n\t"
-                "movl   %%eax, %0\n\t"
-        : "=r" (supported)
-        :: "eax", "ecx"
-        );
+	                "pushfl\n\t"
+        	        "popl   %%eax\n\t"
+	                "xorl   %%ecx, %%eax\n\t"
+        	        "movl   %%eax, %0\n\t"
+	        : "=r" (supported)
+        	:: "eax", "ecx"
+	        );
 
-        return supported != 0;
+        	return supported != 0;
+	#endif
 }
