@@ -125,7 +125,7 @@ public class HPCToolkitPresentation
 				System.out.println("WARNING: The instruction count variation is " + doubleFormat.format(maxVariation*100) + "%, making the results unreliable");
 
 			if (cycles < cpuFrequency)
-				System.out.println("WARNING: The runtime for " + profile.getCodeSectionInfo() + " is too short to gather meaningful measurements");
+				System.out.println("WARNING: The runtime for this code section is too short to gather meaningful measurements");
 
 			double cpi = cycles / instructions;
 			if (cpi <= dCPIThreshold)
