@@ -111,7 +111,7 @@ public class HPCToolkitParser extends AParser
 				else
 				{
 					log.debug("Conversion complete");
-					System.out.println("Converted input file \"" + filename + "\" to flat-profile XML: \"" + convertedFilename + "\"");
+					System.out.println("Input file: \"" + filename + "\"");
 				}
 			}
 			catch (IOException e)
