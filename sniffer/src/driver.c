@@ -9,13 +9,21 @@
 #define	COUNTER_USED		((BOOL) 2)
 #define	COUNTER_ADDED		((BOOL) 3)
 
-enum { TOT_INS=0, TOT_CYC, L1_DCA, L2_DCA, L2_TCA, L1_ICA, L2_ICA, L2_DCM, L2_ICM, L2_TCM, TLB_DM, TLB_IM, BR_INS, BR_MSP, FP_INS, FML_INS, FDV_INS, FAD_INS, L1I_CYCLES_STALLED, FP_COMP_OPS_EXE_SSE_DOUBLE_PRECISION, FP_COMP_OPS_EXE_SSE_FP, FP_COMP_OPS_EXE_SSE_FP_PACKED, FP_COMP_OPS_EXE_SSE_FP_SCALAR, FP_COMP_OPS_EXE_SSE_SINGLE_PRECISION, FP_COMP_OPS_EXE_X87, ARITH_CYCLES_DIV_BUSY, FP_COMP_OPS_EXE_SSE_DOUBLE_PRECISION_SSE_FP_SSE_FP_PACKED_SSE_FP_SCALAR_SSE_SINGLE_PRECISION_X87, ENUM_LENGTH };
+enum { TOT_INS=0, TOT_CYC, L1_DCA, L2_DCA, L2_TCA, L1_ICA, L2_ICA, L2_DCM, L2_ICM, L2_TCM, TLB_DM, TLB_IM, BR_INS, BR_MSP, FP_INS, FML_INS, FDV_INS, FAD_INS, L1I_CYCLES_STALLED, ARITH_CYCLES_DIV_BUSY, FP_COMP_OPS_EXE_SSE_SINGLE_PRECISION, FP_COMP_OPS_EXE_X87, FP_COMP_OPS_EXE_SSE_DOUBLE_PRECISION, FP_COMP_OPS_EXE_SSE_FP, FP_COMP_OPS_EXE_SSE_FP_PACKED, FP_COMP_OPS_EXE_SSE_FP_SCALAR, FP_COMP_OPS_EXE_SSE_DOUBLE_PRECISION_SSE_FP_SSE_FP_PACKED_SSE_FP_SCALAR_SSE_SINGLE_PRECISION_X87, ENUM_LENGTH };
 
 #define	USE_COUNTER(X)		(counter_present[X] = COUNTER_USED)
+#define	ADD_COUNTER(X)		(counter_present[X] = COUNTER_ADDED)
 #define	DELETE_COUNTER(X)	(counter_present[X] = COUNTER_NOT_PRESENT)
-#define	COUNTER_AVAILABLE(X)	(counter_present[X] >= COUNTER_PRESENT)
 
-char* counter_names [ENUM_LENGTH] = { "PAPI_TOT_INS", "PAPI_TOT_CYC", "PAPI_L1_DCA", "PAPI_L2_DCA", "PAPI_L2_TCA", "PAPI_L1_ICA", "PAPI_L2_ICA", "PAPI_L2_DCM", "PAPI_L2_ICM", "PAPI_L2_TCM", "PAPI_TLB_DM", "PAPI_TLB_IM", "PAPI_BR_INS", "PAPI_BR_MSP", "PAPI_FP_INS", "PAPI_FML_INS", "PAPI_FDV_INS", "PAPI_FAD_INS", "L1I_CYCLES_STALLED", "FP_COMP_OPS_EXE:SSE_DOUBLE_PRECISION", "FP_COMP_OPS_EXE:SSE_FP", "FP_COMP_OPS_EXE:SSE_FP_PACKED", "FP_COMP_OPS_EXE:SSE_FP_SCALAR", "FP_COMP_OPS_EXE:SSE_SINGLE_PRECISION", "FP_COMP_OPS_EXE:X87", "ARITH:CYCLES_DIV_BUSY", "FP_COMP_OPS_EXE:SSE_DOUBLE_PRECISION:SSE_FP:SSE_FP_PACKED:SSE_FP_SCALAR:SSE_SINGLE_PRECISION:X87" };
+#define	IS_COUNTER_AVAILABLE(X)	(counter_present[X] != COUNTER_NOT_PRESENT)
+#define	IS_COUNTER_USED(X)	(counter_present[X] == COUNTER_USED)
+#define	IS_COUNTER_ADDED(X)	(counter_present[X] == COUNTER_ADDED)
+
+#define	LCPI_DEF_LENGTH	300
+
+char* counter_names [ENUM_LENGTH] = { "PAPI_TOT_INS", "PAPI_TOT_CYC", "PAPI_L1_DCA", "PAPI_L2_DCA", "PAPI_L2_TCA", "PAPI_L1_ICA", "PAPI_L2_ICA", "PAPI_L2_DCM", "PAPI_L2_ICM", "PAPI_L2_TCM", "PAPI_TLB_DM", "PAPI_TLB_IM", "PAPI_BR_INS", "PAPI_BR_MSP", "PAPI_FP_INS", "PAPI_FML_INS", "PAPI_FDV_INS", "PAPI_FAD_INS", "L1I_CYCLES_STALLED", "ARITH:CYCLES_DIV_BUSY", "FP_COMP_OPS_EXE:SSE_SINGLE_PRECISION", "FP_COMP_OPS_EXE:X87", "FP_COMP_OPS_EXE:SSE_DOUBLE_PRECISION", "FP_COMP_OPS_EXE:SSE_FP", "FP_COMP_OPS_EXE:SSE_FP_PACKED", "FP_COMP_OPS_EXE:SSE_FP_SCALAR", "FP_COMP_OPS_EXE:SSE_DOUBLE_PRECISION:SSE_FP:SSE_FP_PACKED:SSE_FP_SCALAR:SSE_SINGLE_PRECISION:X87" };
+
+int counter_freq [ENUM_LENGTH] = { 13000027, 13000049, 5300003, 1300021, 1300031, 5300027, 1300051, 1300073, 1300111, 1300843, 510007, 510031, 2300017, 510047, 5300081, 5300033, 510049, 5300063, 510067, 510079, 3000017, 3000029, 3000047, 3000061, 3000073, 3000077, 510101 };
 
 BOOL counter_present[ENUM_LENGTH]={0};
 
@@ -84,202 +92,258 @@ int main(int argc, char* argv [])
 	} while (PAPI_enum_event(&i, PAPI_ENUM_EVENTS) == PAPI_OK);
 
 	// Check the basic ones first, so that we don't have to repeat their checks every time we use them
-	if (!COUNTER_AVAILABLE(TOT_CYC))
+	if (!IS_COUNTER_AVAILABLE(TOT_CYC))
 		counter_err("PAPI_TOT_CYC");
 	USE_COUNTER(TOT_CYC);
 
-	if (!COUNTER_AVAILABLE(TOT_INS))
+	if (!IS_COUNTER_AVAILABLE(TOT_INS))
 		counter_err("PAPI_TOT_INS");
 	USE_COUNTER(TOT_INS);
 
-	FILE* fp = fopen ("lcpi.properties", "w");
-	if (fp == NULL)
-	{
-		fprintf (stderr, "Could not open file lcpi.properties for writing, terminating...\n");
-		return 1;
-	}
-
-	fprintf(fp, "version = 1.0\n\n# LCPI config generated using sniffer\n");
-
 	// ratio.floating_point
-	if (COUNTER_AVAILABLE(FML_INS) && COUNTER_AVAILABLE(FDV_INS))
+	char ratio_floating_point [LCPI_DEF_LENGTH];
+	if (IS_COUNTER_AVAILABLE(FML_INS) && IS_COUNTER_AVAILABLE(FDV_INS))
 	{
 		USE_COUNTER(FML_INS);
 		USE_COUNTER(FDV_INS);
 
-		if (COUNTER_AVAILABLE(FAD_INS))
+		if (IS_COUNTER_AVAILABLE(FAD_INS))
 		{
 			USE_COUNTER(FAD_INS);
-			fprintf (fp, "ratio.floating_point = (PAPI_FML_INS + PAPI_FDV_INS + PAPI_FAD_INS) / PAPI_TOT_INS\n");
+			strcpy(ratio_floating_point, "ratio.floating_point = (PAPI_FML_INS + PAPI_FDV_INS + PAPI_FAD_INS) / PAPI_TOT_INS\n");
 		}
 		else
-			fprintf (fp, "ratio.floating_point = (PAPI_FML_INS + PAPI_FDV_INS) / PAPI_TOT_INS\n");
+			strcpy(ratio_floating_point, "ratio.floating_point = (PAPI_FML_INS + PAPI_FDV_INS) / PAPI_TOT_INS\n");
 	}
-	else if (COUNTER_AVAILABLE(FP_INS))
+	else if (IS_COUNTER_AVAILABLE(FP_INS))
 	{
 		USE_COUNTER(FP_INS);
-		fprintf (fp, "ratio.floating_point = PAPI_FP_INS / PAPI_TOT_INS\n");
+		strcpy(ratio_floating_point, "ratio.floating_point = PAPI_FP_INS / PAPI_TOT_INS\n");
 	}
 	else	counter_err("ratio.floating_point");
 
 	//ratio.data_accesses
-	if (COUNTER_AVAILABLE(L1_DCA))
+	char ratio_data_accesses [LCPI_DEF_LENGTH];
+	if (IS_COUNTER_AVAILABLE(L1_DCA))
 	{
 		USE_COUNTER(L1_DCA);
-		fprintf (fp, "ratio.data_accesses = PAPI_L1_DCA / PAPI_TOT_INS\n\n");
+		strcpy(ratio_data_accesses, "ratio.data_accesses = PAPI_L1_DCA / PAPI_TOT_INS\n\n");
 	}
 	else	counter_err("data_accesses");
 
 	//overall
-	fprintf (fp, "overall = PAPI_TOT_CYC / PAPI_TOT_INS\n\n");
+	char overall [LCPI_DEF_LENGTH];
+	strcpy(overall, "overall = PAPI_TOT_CYC / PAPI_TOT_INS\n\n");
 
 	//data_accesses
-	char* lcpi_L2_DCA = NULL;
-	char* lcpi_L2_DCM = NULL;
+	char lcpi_L2_DCA [LCPI_DEF_LENGTH];
+	char lcpi_L2_DCM [LCPI_DEF_LENGTH];
 
-	if (COUNTER_AVAILABLE(L2_DCA))
+	if (IS_COUNTER_AVAILABLE(L2_DCA))
 	{
 		USE_COUNTER(L2_DCA);
-		lcpi_L2_DCA = "PAPI_L2_DCA";
+		strcpy(lcpi_L2_DCA, "PAPI_L2_DCA");
 	}
-	else if (COUNTER_AVAILABLE(L2_TCA) && COUNTER_AVAILABLE(L2_ICA))
+	else if (IS_COUNTER_AVAILABLE(L2_TCA) && IS_COUNTER_AVAILABLE(L2_ICA))
 	{
 		USE_COUNTER(L2_TCA);
 		USE_COUNTER(L2_ICA);
-		lcpi_L2_DCA = "(PAPI_L2_TCA - PAPI_L2_ICA)";
+		strcpy(lcpi_L2_DCA, "(PAPI_L2_TCA - PAPI_L2_ICA)");
 	}
 	else	counter_err("PAPI_L2_DCA");
 
-	if (COUNTER_AVAILABLE(L2_DCM))
+	if (IS_COUNTER_AVAILABLE(L2_DCM))
 	{
 		USE_COUNTER(L2_DCM);
-		lcpi_L2_DCM = "PAPI_L2_DCM";
+		strcpy(lcpi_L2_DCM, "PAPI_L2_DCM");
 	}
-	else if (COUNTER_AVAILABLE(L2_TCM) && COUNTER_AVAILABLE(L2_ICM))
+	else if (IS_COUNTER_AVAILABLE(L2_TCM) && IS_COUNTER_AVAILABLE(L2_ICM))
 	{
 		USE_COUNTER(L2_TCM);
 		USE_COUNTER(L2_ICM);
-		lcpi_L2_DCM = "(PAPI_L2_TCM - PAPI_L2_ICM)";
+		strcpy(lcpi_L2_DCM, "(PAPI_L2_TCM - PAPI_L2_ICM)");
 	}
 	else	counter_err("PAPI_L2_DCM");
 
-	fprintf (fp, "data_accesses.overall = (PAPI_L1_DCA * L1_dlat + %s * L2_lat + %s * mem_lat) / PAPI_TOT_INS\n", lcpi_L2_DCA, lcpi_L2_DCM);
-	fprintf (fp, "data_accesses.L1d_hits = (PAPI_L1_DCA * L1_dlat) / PAPI_TOT_INS\n");
-	fprintf (fp, "data_accesses.L2d_hits = (%s * L2_lat) / PAPI_TOT_INS\n", lcpi_L2_DCA);
-	fprintf (fp, "data_accesses.L2d_misses = (%s * mem_lat) / PAPI_TOT_INS\n\n", lcpi_L2_DCM);
+	char data_accesses_overall [LCPI_DEF_LENGTH];
+	sprintf(data_accesses_overall, "data_accesses.overall = (PAPI_L1_DCA * L1_dlat + %s * L2_lat + %s * mem_lat) / PAPI_TOT_INS\n", lcpi_L2_DCA, lcpi_L2_DCM);
+
+	char data_accesses_L1d_hits [LCPI_DEF_LENGTH];
+	strcpy(data_accesses_L1d_hits, "data_accesses.L1d_hits = (PAPI_L1_DCA * L1_dlat) / PAPI_TOT_INS\n");
+
+	char data_accesses_L2d_hits [LCPI_DEF_LENGTH];
+	sprintf(data_accesses_L2d_hits, "data_accesses.L2d_hits = (%s * L2_lat) / PAPI_TOT_INS\n", lcpi_L2_DCA);
+
+	char data_accesses_L2d_misses [LCPI_DEF_LENGTH];
+	sprintf(data_accesses_L2d_misses, "data_accesses.L2d_misses = (%s * mem_lat) / PAPI_TOT_INS\n\n", lcpi_L2_DCM);
 
 	//instruction_accesses
-	char* lcpi_L2_ICA = NULL;
-	char* lcpi_L2_ICM = NULL;
+	char lcpi_L2_ICA [LCPI_DEF_LENGTH];
+	char lcpi_L2_ICM [LCPI_DEF_LENGTH];
 
-	if (!COUNTER_AVAILABLE(L1_ICA))
+	if (!IS_COUNTER_AVAILABLE(L1_ICA))
 		counter_err("PAPI_L1_ICA");
 	USE_COUNTER(L1_ICA);
 
-	if (COUNTER_AVAILABLE(L2_ICA))
+	if (IS_COUNTER_AVAILABLE(L2_ICA))
 	{
 		USE_COUNTER(L2_ICA);
-		lcpi_L2_ICA = "PAPI_L2_ICA";
+		strcpy(lcpi_L2_ICA, "PAPI_L2_ICA");
 	}
-	else if (COUNTER_AVAILABLE(L2_TCA) && COUNTER_AVAILABLE(L2_DCA))
+	else if (IS_COUNTER_AVAILABLE(L2_TCA) && IS_COUNTER_AVAILABLE(L2_DCA))
 	{
 		USE_COUNTER(L2_TCA);
 		USE_COUNTER(L2_DCA);
-		lcpi_L2_ICA = "(PAPI_L2_TCA - PAPI_L2_DCA)";
+		strcpy(lcpi_L2_ICA, "(PAPI_L2_TCA - PAPI_L2_DCA)");
 	}
 	else	counter_err("PAPI_L2_ICA");
 
-	if (COUNTER_AVAILABLE(L2_ICM))
+	if (IS_COUNTER_AVAILABLE(L2_ICM))
 	{
 		USE_COUNTER(L2_ICM);
-		lcpi_L2_ICM = "PAPI_L2_ICM";
+		strcpy(lcpi_L2_ICM, "PAPI_L2_ICM");
 	}
-	else if (COUNTER_AVAILABLE(L2_TCM) && COUNTER_AVAILABLE(L2_DCM))
+	else if (IS_COUNTER_AVAILABLE(L2_TCM) && IS_COUNTER_AVAILABLE(L2_DCM))
 	{
 		USE_COUNTER(L2_TCM);
 		USE_COUNTER(L2_DCM);
-		lcpi_L2_ICM = "(PAPI_L2_TCM - PAPI_L2_DCM)";
+		strcpy(lcpi_L2_ICM, "(PAPI_L2_TCM - PAPI_L2_DCM)");
 	}
 	else	counter_err("PAPI_L2_ICM");
 
-	fprintf (fp, "instruction_accesses.overall = (PAPI_L1_ICA * L1_ilat + %s * L2_lat + %s * mem_lat) / PAPI_TOT_INS\n", lcpi_L2_ICA, lcpi_L2_ICM);
-	fprintf (fp, "instruction_accesses.L1i_hits = PAPI_L1_ICA * L1_ilat / PAPI_TOT_INS\n", lcpi_L2_ICA, lcpi_L2_ICM);
-	fprintf (fp, "instruction_accesses.L2i_hits = %s * L2_lat / PAPI_TOT_INS\n", lcpi_L2_ICA);
-	fprintf (fp, "instruction_accesses.L2i_misses = %s * mem_lat / PAPI_TOT_INS\n\n", lcpi_L2_ICM);
+	char instruction_accesses_overall [LCPI_DEF_LENGTH];
+	sprintf(instruction_accesses_overall, "instruction_accesses.overall = (PAPI_L1_ICA * L1_ilat + %s * L2_lat + %s * mem_lat) / PAPI_TOT_INS\n", lcpi_L2_ICA, lcpi_L2_ICM);
+
+	char instruction_accesses_L1i_hits [LCPI_DEF_LENGTH];
+	strcpy(instruction_accesses_L1i_hits, "instruction_accesses.L1i_hits = PAPI_L1_ICA * L1_ilat / PAPI_TOT_INS\n");
+
+	char instruction_accesses_L2i_hits [LCPI_DEF_LENGTH];
+	sprintf(instruction_accesses_L2i_hits, "instruction_accesses.L2i_hits = %s * L2_lat / PAPI_TOT_INS\n", lcpi_L2_ICA);
+
+	char instruction_accesses_L2i_misses [LCPI_DEF_LENGTH];
+	sprintf(instruction_accesses_L2i_misses, "instruction_accesses.L2i_misses = %s * mem_lat / PAPI_TOT_INS\n\n", lcpi_L2_ICM);
 
 	//data_TLB
-	if (COUNTER_AVAILABLE(TLB_DM))
+	char data_TLB_overall [LCPI_DEF_LENGTH];
+	if (IS_COUNTER_AVAILABLE(TLB_DM))
 	{
 		USE_COUNTER(TLB_DM);
-		fprintf (fp, "data_TLB.overall = PAPI_TLB_DM * TLB_lat / PAPI_TOT_INS\n");
+		strcpy(data_TLB_overall, "data_TLB.overall = PAPI_TLB_DM * TLB_lat / PAPI_TOT_INS\n");
 	}
 	else	counter_err("PAPI_TLB_DM");
 
 	//instruction_TLB
-	if (COUNTER_AVAILABLE(TLB_IM))
+	char instruction_TLB_overall [LCPI_DEF_LENGTH];
+	if (IS_COUNTER_AVAILABLE(TLB_IM))
 	{
 		USE_COUNTER(TLB_IM);
-		fprintf (fp, "instruction_TLB.overall = PAPI_TLB_IM * TLB_lat / PAPI_TOT_INS\n\n");
+		strcpy(instruction_TLB_overall, "instruction_TLB.overall = PAPI_TLB_IM * TLB_lat / PAPI_TOT_INS\n\n");
 	}
 	else	counter_err("PAPI_TLB_IM");
 
 	//branch_instructions
-	if (COUNTER_AVAILABLE(BR_INS) && COUNTER_AVAILABLE(BR_MSP))
+	char branch_instructions_overall [LCPI_DEF_LENGTH];
+	char branch_instructions_correctly_predicted [LCPI_DEF_LENGTH];
+	char branch_instructions_mispredicted [LCPI_DEF_LENGTH];
+
+	if (IS_COUNTER_AVAILABLE(BR_INS) && IS_COUNTER_AVAILABLE(BR_MSP))
 	{
 		USE_COUNTER(BR_INS);
 		USE_COUNTER(BR_MSP);
-		fprintf (fp, "branch_instructions.overall = (PAPI_BR_INS * BR_lat + PAPI_BR_MSP * BR_miss_lat) / PAPI_TOT_INS\n");
-		fprintf (fp, "branch_instructions.correctly_predicted = PAPI_BR_INS * BR_lat / PAPI_TOT_INS\n");
-		fprintf (fp, "branch_instructions.mispredicted = PAPI_BR_MSP * BR_miss_lat / PAPI_TOT_INS\n\n");
+		strcpy(branch_instructions_overall, "branch_instructions.overall = (PAPI_BR_INS * BR_lat + PAPI_BR_MSP * BR_miss_lat) / PAPI_TOT_INS\n");
+		strcpy(branch_instructions_correctly_predicted, "branch_instructions.correctly_predicted = PAPI_BR_INS * BR_lat / PAPI_TOT_INS\n");
+		strcpy(branch_instructions_mispredicted, "branch_instructions.mispredicted = PAPI_BR_MSP * BR_miss_lat / PAPI_TOT_INS\n\n");
 	}
 	else
 		counter_err("branch_instructions");
 
 	//floating-point_instr
-	char* lcpi_slow = NULL;
-	char* lcpi_fast = NULL;
+	char lcpi_slow [LCPI_DEF_LENGTH];
+	char lcpi_fast [LCPI_DEF_LENGTH];
 
-	if (COUNTER_AVAILABLE(FML_INS))
+	if (IS_COUNTER_AVAILABLE(FML_INS))
 	{
 		USE_COUNTER(FML_INS);
-		if (COUNTER_AVAILABLE(FAD_INS))
+		if (IS_COUNTER_AVAILABLE(FAD_INS))
 		{
 			USE_COUNTER(FAD_INS);
-			lcpi_fast = "((PAPI_FML_INS + PAPI_FAD_INS) * FP_lat)";
+			strcpy(lcpi_fast, "((PAPI_FML_INS + PAPI_FAD_INS) * FP_lat)");
 		}
 		else
-			lcpi_fast = "(PAPI_FML_INS * FP_lat)";
+			strcpy(lcpi_fast, "(PAPI_FML_INS * FP_lat)");
 	}
-	else if (COUNTER_AVAILABLE(FP_COMP_OPS_EXE_SSE_DOUBLE_PRECISION) && COUNTER_AVAILABLE(FP_COMP_OPS_EXE_SSE_FP) && COUNTER_AVAILABLE(FP_COMP_OPS_EXE_SSE_FP_PACKED) && COUNTER_AVAILABLE(FP_COMP_OPS_EXE_SSE_FP_SCALAR) && COUNTER_AVAILABLE(FP_COMP_OPS_EXE_SSE_SINGLE_PRECISION) && COUNTER_AVAILABLE(FP_COMP_OPS_EXE_X87))
+	else if (IS_COUNTER_AVAILABLE(FP_COMP_OPS_EXE_SSE_DOUBLE_PRECISION) && IS_COUNTER_AVAILABLE(FP_COMP_OPS_EXE_SSE_FP) && IS_COUNTER_AVAILABLE(FP_COMP_OPS_EXE_SSE_FP_PACKED) && IS_COUNTER_AVAILABLE(FP_COMP_OPS_EXE_SSE_FP_SCALAR) && IS_COUNTER_AVAILABLE(FP_COMP_OPS_EXE_SSE_SINGLE_PRECISION) && IS_COUNTER_AVAILABLE(FP_COMP_OPS_EXE_X87))
 	{
-		USE_COUNTER(FP_COMP_OPS_EXE_SSE_DOUBLE_PRECISION_SSE_FP_SSE_FP_PACKED_SSE_FP_SCALAR_SSE_SINGLE_PRECISION_X87);
-		DELETE_COUNTER(FP_COMP_OPS_EXE_SSE_DOUBLE_PRECISION);
-		DELETE_COUNTER(FP_COMP_OPS_EXE_SSE_FP);
-		DELETE_COUNTER(FP_COMP_OPS_EXE_SSE_FP_PACKED);
-		DELETE_COUNTER(FP_COMP_OPS_EXE_SSE_FP_SCALAR);
-		DELETE_COUNTER(FP_COMP_OPS_EXE_SSE_SINGLE_PRECISION);
-		DELETE_COUNTER(FP_COMP_OPS_EXE_X87);
+		// Do a dummy test to see if the single big counter can be added or do we have to break it down into multiple parts
+		int event_set = PAPI_NULL;
+		if (PAPI_create_eventset(&event_set) != PAPI_OK)
+		{
+			fprintf (stderr, "Could not create PAPI event set for determining which counters can be counted simultaneously\n");
+			return 1;
+		}
 
-		lcpi_fast = "(FP_COMP_OPS_EXE:SSE_DOUBLE_PRECISION:SSE_FP:SSE_FP_PACKED:SSE_FP_SCALAR:SSE_SINGLE_PRECISION:X87 * FP_lat)";
+		// Add PAPI_TOT_INS as we will be measuring it in every run
+		int papi_tot_ins_code;
+
+		PAPI_event_name_to_code("PAPI_TOT_INS", &papi_tot_ins_code);
+		if (PAPI_add_event(event_set, papi_tot_ins_code) != PAPI_OK)
+		{
+			fprintf (stderr, "Could not add PAPI_TOT_INS to the event set, cannot continue...\n");
+			return 1;
+		}
+
+		int event_code;
+		PAPI_event_name_to_code("FP_COMP_OPS_EXE:SSE_DOUBLE_PRECISION:SSE_FP:SSE_FP_PACKED:SSE_FP_SCALAR:SSE_SINGLE_PRECISION:X87", &event_code);
+		if (PAPI_add_event(event_set, event_code) == PAPI_OK)
+		{
+			// Good! It can be added
+			USE_COUNTER(FP_COMP_OPS_EXE_SSE_DOUBLE_PRECISION_SSE_FP_SSE_FP_PACKED_SSE_FP_SCALAR_SSE_SINGLE_PRECISION_X87);
+			DELETE_COUNTER(FP_COMP_OPS_EXE_SSE_DOUBLE_PRECISION);
+			DELETE_COUNTER(FP_COMP_OPS_EXE_SSE_FP);
+			DELETE_COUNTER(FP_COMP_OPS_EXE_SSE_FP_PACKED);
+			DELETE_COUNTER(FP_COMP_OPS_EXE_SSE_FP_SCALAR);
+			DELETE_COUNTER(FP_COMP_OPS_EXE_SSE_SINGLE_PRECISION);
+			DELETE_COUNTER(FP_COMP_OPS_EXE_X87);
+
+			strcpy(lcpi_fast, "(FP_COMP_OPS_EXE:SSE_DOUBLE_PRECISION:SSE_FP:SSE_FP_PACKED:SSE_FP_SCALAR:SSE_SINGLE_PRECISION:X87 * FP_lat)");
+		}
+		else
+		{
+			// Asume that we can add separately. If this is false, we will catch it at the time of generating LCPIs
+
+			// Use the available counters
+			USE_COUNTER(FP_COMP_OPS_EXE_SSE_DOUBLE_PRECISION);
+			USE_COUNTER(FP_COMP_OPS_EXE_SSE_FP);
+			USE_COUNTER(FP_COMP_OPS_EXE_SSE_FP_PACKED);
+			USE_COUNTER(FP_COMP_OPS_EXE_SSE_FP_SCALAR);
+			USE_COUNTER(FP_COMP_OPS_EXE_SSE_SINGLE_PRECISION);
+			USE_COUNTER(FP_COMP_OPS_EXE_X87);
+
+			strcpy(lcpi_fast, "((FP_COMP_OPS_EXE:SSE_DOUBLE_PRECISION + FP_COMP_OPS_EXE:SSE_FP + FP_COMP_OPS_EXE:SSE_FP_PACKED + FP_COMP_OPS_EXE:SSE_FP_SCALAR + FP_COMP_OPS_EXE:SSE_SINGLE_PRECISION + FP_COMP_OPS_EXE:X87) * FP_lat)");
+		}
 	}
 	else	counter_err("floating-point_instr.fast_FP_inst");
 
-	if (COUNTER_AVAILABLE(FDV_INS))
+	if (IS_COUNTER_AVAILABLE(FDV_INS))
 	{
 		USE_COUNTER(FDV_INS);
-		lcpi_slow = "(PAPI_FDV_INS * FP_slow_lat)";
+		strcpy(lcpi_slow, "(PAPI_FDV_INS * FP_slow_lat)");
 	}
-	else if (COUNTER_AVAILABLE(ARITH_CYCLES_DIV_BUSY))
+	else if (IS_COUNTER_AVAILABLE(ARITH_CYCLES_DIV_BUSY))
 	{
 		USE_COUNTER(ARITH_CYCLES_DIV_BUSY);
-		lcpi_slow = "(ARITH:CYCLES_DIV_BUSY * FP_slow_lat)";
+		strcpy(lcpi_slow, "ARITH:CYCLES_DIV_BUSY");
 	}
 	else	counter_err("floating-point_instr.slow_FP_inst");
 
-	fprintf (fp, "floating-point_instr.overall = (%s + %s) / PAPI_TOT_INS\n", lcpi_fast, lcpi_slow);
-	fprintf (fp, "floating-point_instr.fast_FP_instr = %s / PAPI_TOT_INS\n", lcpi_fast);
-	fprintf (fp, "floating-point_instr.slow_FP_instr = %s / PAPI_TOT_INS\n", lcpi_slow);
-	fclose (fp);
+	char floating_point_instr_overall [LCPI_DEF_LENGTH];
+	sprintf(floating_point_instr_overall, "floating-point_instr.overall = (%s + %s) / PAPI_TOT_INS\n", lcpi_fast, lcpi_slow);
+
+	char floating_point_instr_fast_FP_instr [LCPI_DEF_LENGTH];
+	sprintf(floating_point_instr_fast_FP_instr, "floating-point_instr.fast_FP_instr = %s / PAPI_TOT_INS\n", lcpi_fast);
+
+	char floating_point_instr_slow_FP_instr [LCPI_DEF_LENGTH];
+	sprintf(floating_point_instr_slow_FP_instr, "floating-point_instr.slow_FP_instr = %s / PAPI_TOT_INS\n", lcpi_slow);
 
 	int event_code;
 	int exp_count = 0;
@@ -288,9 +352,10 @@ int main(int argc, char* argv [])
 	short addCount, remaining;
 	PAPI_event_name_to_code("PAPI_TOT_INS", &papi_tot_ins_code);
 
-	int rel_primes [4] = { 510007, 510009, 530003, 510013 };
+	#define MAX_REL_PRIMES	7
+	int rel_primes [MAX_REL_PRIMES] = { 510007, 510009, 530003, 510013, 530006, 510017, 510019 };
 
-	fp = fopen ("experiment.header.tmp", "w");
+	FILE* fp = fopen ("experiment.header.tmp", "w");
 	if (fp == NULL)
 	{
 		fprintf (stderr, "Could not open file experiment.header for writing, terminaing...\n");
@@ -315,6 +380,7 @@ int main(int argc, char* argv [])
 
 		addCount = 0;
 		remaining = 0;
+		short recently_added [MAX_REL_PRIMES] = { -1, -1, -1, -1, -1, -1, -1 };
 		for (j=0; j<ENUM_LENGTH; j++)
 		{
 			// Don't need to specially add PAPI_TOT_INS, we are measuring that anyway
@@ -326,19 +392,20 @@ int main(int argc, char* argv [])
 				PAPI_event_name_to_code(counter_names[j], &event_code);
 				if (PAPI_add_event(event_set, event_code) == PAPI_OK)
 				{
-					addCount++;
-					counter_present[j] = COUNTER_ADDED;
+					ADD_COUNTER(j);
+					recently_added[addCount] = j;
+
 					if (remaining == 0)	// New line
 						fprintf (fp, "experiment[%d]=\\\"", exp_count);
 
-					if (j == TOT_CYC)	fprintf (fp, "--event %s:13000047 ", counter_names[j]);
-					else			fprintf (fp, "--event %s:%d ", counter_names[j], rel_primes[remaining%4]);
+					fprintf (fp, "--event %s:%d ", counter_names[j], counter_freq[j]);
+					addCount++;
 				}
 
 				remaining++;
 
 				// If we've used all the relatively prime numbers, break into the next experiment
-				if (remaining == 3)
+				if (remaining == MAX_REL_PRIMES-1)
 					break;
 			}
 		}
@@ -353,15 +420,50 @@ int main(int argc, char* argv [])
 			fprintf (stderr, "\n");
 			break;
 		}
+		else
+			exp_count++;
 
-		exp_count++;
-		if (remaining > 0)	fprintf (fp, "--event PAPI_TOT_INS:13000027\\\"\\n");
+		if (addCount > 0 && remaining > 0)	fprintf (fp, "--event PAPI_TOT_INS:%d\\\"\\n", counter_freq[TOT_INS]);
 	} while (remaining > 0);
 
 	fclose(fp);
 
-	if (addCount != 0)
-		fprintf (stderr, "Generated LCPI and experiment files\n");
+	fp = fopen ("lcpi.properties", "w");
+	if (fp == NULL)
+	{
+		fprintf (stderr, "Could not open file lcpi.properties for writing, terminating...\n");
+		return 1;
+	}
 
+	fprintf (fp, "version = 1.0\n\n# LCPI config generated using sniffer\n");
+	fprintf (fp, "%s", ratio_floating_point);
+	fprintf (fp, "%s", ratio_data_accesses);
+
+	fprintf (fp, "%s", overall);
+
+	fprintf (fp, "%s", data_accesses_overall);
+	fprintf (fp, "%s", data_accesses_L1d_hits);
+	fprintf (fp, "%s", data_accesses_L2d_hits);
+	fprintf (fp, "%s", data_accesses_L2d_misses);
+
+	fprintf (fp, "%s", instruction_accesses_overall);
+	fprintf (fp, "%s", instruction_accesses_L1i_hits);
+	fprintf (fp, "%s", instruction_accesses_L2i_hits);
+	fprintf (fp, "%s", instruction_accesses_L2i_misses);
+
+	fprintf (fp, "%s", data_TLB_overall);
+	fprintf (fp, "%s", instruction_TLB_overall);
+
+	fprintf (fp, "%s", branch_instructions_overall);
+	fprintf (fp, "%s", branch_instructions_correctly_predicted);
+	fprintf (fp, "%s", branch_instructions_mispredicted);
+
+	fprintf (fp, "%s", floating_point_instr_overall);
+	fprintf (fp, "%s", floating_point_instr_fast_FP_instr);
+	fprintf (fp, "%s", floating_point_instr_slow_FP_instr);
+
+	fclose (fp);
+
+	fprintf (stderr, "Generated LCPI and experiment files\n");
 	return 0;
 }
