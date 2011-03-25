@@ -73,7 +73,7 @@ int discoverAMDCaches(cacheCollection* lpCaches)
 {
 	int i, info[4];
 
-	__cpuid(info, 0x80000005);
+	__cpuid(info, 0x80000005, 0);
 
 	// TLBs
 	if ((info[EAX] & 0xff000000) >> 24)
@@ -187,7 +187,7 @@ int discoverAMDCaches(cacheCollection* lpCaches)
 		insertIntoCacheList(&lpCaches->lpL1Caches, L1InstCache);
 	}
 
-	__cpuid(info, 0x80000006);
+	__cpuid(info, 0x80000006, 0);
 
 	// TLBs
 	if (info[EAX] & 0xf0000000)

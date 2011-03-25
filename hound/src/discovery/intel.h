@@ -93,11 +93,88 @@ const intelCacheTableEntry intelCacheTable[CACHE_TABLE_SIZE] = {
 	0xEC, {	CACHE,		UNIFIED,		3,			64,			393216,		24 }
 };
 
+int insertIntoCorrectCacheList(cacheCollection* lpCaches, cacheInfo cache)
+{
+	cacheList** lplpCacheList = NULL;
+	if (cache.level == 1 || cache.level == DONT_CARE)
+	{
+		// Insert into L1
+		lplpCacheList = &lpCaches->lpL1Caches;
+	}
+	else if (cache.level == 2)
+	{
+		// Insert into L2
+		lplpCacheList = &lpCaches->lpL2Caches;
+	}
+	else if (cache.level == 3)
+	{
+		// Insert into L3
+		lplpCacheList = &lpCaches->lpL3Caches;
+	}
+	else
+	{
+		// Ignore;
+		#ifdef	DEBUG_PRINT
+			printf ("DEBUG: Found cache/TLB at unknown level: %d, ignoring...\n", cache.level);
+		#endif
+
+		return;
+	}
+
+	#ifdef	DEBUG_PRINT
+		if (cache.cacheOrTLB == CACHE)
+			printf ("DEBUG: Found %s cache at level %d of size: %.2lf KB\n", getCacheType(cache.type), cache.level, cache.lineSize * cache.lineCount / 1024.0);
+		else if (cache.cacheOrTLB == TLB)
+			printf ("DEBUG: Found %s TLB at level %d with %d lines\n", getCacheType(cache.type), cache.level, cache.lineCount);
+	#endif
+
+	return insertIntoCacheList(lplpCacheList, cache);
+}
+
 int mapIntelCache(cacheCollection* lpCaches, short code)
 {
 	#ifdef	DEBUG_PRINT
 		printf ("DEBUG: Mapping code 0x%X to cache...\n", code);
 	#endif
+
+	if (code == 0xFF)
+	{
+		#ifdef	DEBUG_PRINT
+			printf ("DEBUG: Invoking CPUID with leaf 4 for discovering deterministic cache parameters\n");
+		#endif
+
+		int i=0, info[4];
+
+		while(1)
+		{
+			__cpuid(info, 0x04, i);
+			i++;
+
+			if ((info[0] & 0x0f) == 0)
+				break;
+
+			int ways = ((info[1] & 0xffc00000) >> 22) + 1;
+			int partitions = ((info[1] & 0x003ff000) >> 12) + 1;
+			int sets = (info[2] & 0xffffffff) + 1;
+
+			cacheInfo newCache;
+			newCache.cacheOrTLB = CACHE;
+
+			if ((info[0] & 0x0f) == 1)	newCache.type = DATA;
+			else if ((info[0] & 0x0f) == 2)	newCache.type = INSTRUCTION;
+			else if ((info[0] & 0x0f) == 3)	newCache.type = UNIFIED;
+			else 				newCache.type = TYPE_UNKNOWN;
+
+			newCache.level = (info[0] & 0x70) >> 5;
+			newCache.lineSize = (info[1] & 0x0fff) + 1;
+			newCache.lineCount = ways*partitions*sets;
+			newCache.wayness = ways;
+
+			insertIntoCorrectCacheList(lpCaches, newCache);
+		}
+
+		return 0;
+	}
 
 	int i;
 	// Search through the table
@@ -114,40 +191,7 @@ int mapIntelCache(cacheCollection* lpCaches, short code)
 		return;	// Did not find the entry
 	}
 
-	cacheList** lplpCacheList = NULL;
-	if (intelCacheTable[i].info.level == 1 || intelCacheTable[i].info.level == DONT_CARE)
-	{
-		// Insert into L1
-		lplpCacheList = &lpCaches->lpL1Caches;
-	}
-	else if (intelCacheTable[i].info.level == 2)
-	{
-		// Insert into L2
-		lplpCacheList = &lpCaches->lpL2Caches;
-	}
-	else if (intelCacheTable[i].info.level == 3)
-	{
-		// Insert into L3
-		lplpCacheList = &lpCaches->lpL3Caches;
-	}
-	else
-	{
-		// Ignore;
-		#ifdef	DEBUG_PRINT
-			printf ("DEBUG: Found cache/TLB at unknown level: %d, ignoring...\n", intelCacheTable[i].info.level);
-		#endif
-
-		return;
-	}
-
-	#ifdef	DEBUG_PRINT
-		if (intelCacheTable[i].info.cacheOrTLB == CACHE)
-			printf ("DEBUG: Found %s cache at level %d of size: %.2lf KB\n", getCacheType(intelCacheTable[i].info.type), intelCacheTable[i].info.level, intelCacheTable[i].info.lineSize * intelCacheTable[i].info.lineCount / 1024.0);
-		else if (intelCacheTable[i].info.cacheOrTLB == TLB)
-			printf ("DEBUG: Found %s TLB at level %d with %d lines\n", getCacheType(intelCacheTable[i].info.type), intelCacheTable[i].info.level, intelCacheTable[i].info.lineCount);
-	#endif
-
-	insertIntoCacheList(lplpCacheList, intelCacheTable[i].info);
+	insertIntoCorrectCacheList(lpCaches, intelCacheTable[i].info);
 	return 0;
 }
 
@@ -156,7 +200,7 @@ int discoverIntelCaches(cacheCollection* lpCaches)
 	// Loop over all caches
 	int i, info[4];
 
-	__cpuid(info, 0x2);
+	__cpuid(info, 0x2, 0);
 	if ((info[EAX] & 0xff) == 1)
 	{
 		for (i=1; i<4; i++)

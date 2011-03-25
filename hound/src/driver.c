@@ -20,8 +20,6 @@ along with Hound.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <inttypes.h>
 
-#define rdtsc() ({ uint64_t x; asm volatile("rdtsc" : "=A" (x)); x; })
-
 #include "err.h"
 #include "cpuid.h"
 #include "typeDefinitions.h"
@@ -29,9 +27,11 @@ along with Hound.  If not, see <http://www.gnu.org/licenses/>.
 #include "discovery/amd.h"
 #include "discovery/intel.h"
 
-#include "nanobenchmarks/amd.h"
-#include "nanobenchmarks/intel.h"
-#include "nanobenchmarks/generic.h"
+#ifndef	__x86_64
+	#include "nanobenchmarks/x86.h"
+#else
+	#include "nanobenchmarks/x86-64.h"
+#endif
 
 #define	COLLECTION_SIZE	50
 enum { PROC_UNKNOWN=-1, PROC_INTEL=0, PROC_AMD };
@@ -41,7 +41,7 @@ char processor = PROC_UNKNOWN;
 void getProcessorName(char* string)
 {
 	int info[4];
-	__cpuid(info, 0);
+	__cpuid(info, 0, 0);
 	char processorName [13] = {0};
 
 	int charCounter = 0;
@@ -197,13 +197,13 @@ int isCacheProbeSupportedByCPUID(unsigned char processor)
 
 	if (processor == PROC_INTEL)
 	{
-		__cpuid(info, 0);
+		__cpuid(info, 0, 0);
 		if (info[0] >= 0x2)
 			return 0;
 	}
 	else if (processor == PROC_AMD)
 	{
-		__cpuid(info, 0x80000000);
+		__cpuid(info, 0x80000000, 0);
 		if (info[0] >= 0x80000006)
 			return 0;
 	}

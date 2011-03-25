@@ -8,174 +8,6 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
-double allocateAndTestL1(long size, int stride, unsigned char warmup)
-{
-	if (stride > size)
-		return 0;
-
-	int ret, diff, count;
-	unsigned char *ptr;
-
-	if ((ret = posix_memalign((void**) &ptr, 8, size) != 0) || ptr == NULL)
-	{
-		if (errno == ENOMEM)
-			printf ("No memory\n");
-		else if (errno == EINVAL)
-			printf ("Not aligned\n");
-		else	printf ("Unknown error in allocating %ld size with %ld alignment\n", size, size);
-
-		return 0;
-	}
-
-	int repeatCount = (warmup == 0 ? 1 : 2);
-
-	__asm__ volatile(
-		// Simulate a function call during entry
-		"pushl	%2\n\t"		// 16(%%ebp)
-		"pushl	%3\n\t"		// 12(%%ebp)
-		"pushl	%4\n\t"
-		"pushl	%5\n\t"
-
-		// Set up the frame
-		"pushl	%%ebp\n\t"
-		"movl	%%esp, %%ebp\n\t"
-		"subl	$20, %%esp\n\t"
-
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushl	%%ebx\n\t"
-		"pushl	%%esi\n\t"
-		"pushl	%%edi\n\t"
-
-		// Setting up repeat counter
-		"movl	4(%%ebp), %%ebx\n\t"
-		"movl	%%ebx, -4(%%ebp)\n\t"
-
-		"xorl	%%ebx, %%ebx\n\t"
-		"movl	16(%%ebp), %%edx\n\t"
-		"movl	12(%%ebp), %%ecx\n\t"
-		"movl	8(%%ebp), %%esi\n\t"
-		"movl	%%edx, %%edi\n\t"
-		"addl	%%esi, %%edi\n\t"
-
-	"setupL1:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	setupoutL1\n\t"
-		"movl	%%edi, (%%edx, %%ebx)\n\t"
-		"subl	%%esi, %%ecx\n\t"
-		"addl	%%esi, %%ebx\n\t"
-		"addl	%%esi, %%edi\n\t"
-		"jmp	setupL1\n\t"
-
-	"setupoutL1:\n\t"
-		// "Cyclic reference, last location contains address of first location
-		"movl	%%edx, (%%edx, %%ebx)\n\t"
-
-		// Loop a million times
-		"movl	$1048576, %%ecx\n\t"
-		"movl	%%ecx, 12(%%ebp)\n\t"
-
-	"repeatL1:\n\t"
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Do some operation
-		"xorl	%%ebx, %%ebx\n\t"
-		"movl	16(%%ebp), %%edx\n\t"
-		"movl	12(%%ebp), %%ecx\n\t"
-		"movl	8(%%ebp), %%esi\n\t"
-
-	"writeL1:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	outL1\n\t"
-		"movl	(%%edx), %%edi\n\t"
-		"movl	%%edi, %%edx\n\t"
-		//"subl	%%esi, %%ecx\n\t"
-		"decl	%%ecx\n\t"
-		"addl	%%esi, %%ebx\n\t"
-		"jmp	writeL1\n\t"
-
-	"outL1:\n\t"
-		// End measuring
-		"movl	%%ebx, -16(%%ebp)\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Check if we have to repeat
-		"decl	-4(%%ebp)\n\t"
-		"jnz	repeatL1\n\t"
-
-		// Store the result (with overhead)
-		"movl	%%eax, -20(%%ebp)\n\t"
-
-		// Do everything all over again without the actual step to be measured
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Do some operation
-		"xorl	%%ebx, %%ebx\n\t"
-		"movl	16(%%ebp), %%edx\n\t"
-		"movl	12(%%ebp), %%ecx\n\t"
-		"movl	8(%%ebp), %%esi\n\t"
-
-	"overheadwriteL1:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	overheadoutL1\n\t"
-		"movl	%%edi, %%edx\n\t"
-		//"subl	%%esi, %%ecx\n\t"
-		"decl	%%ecx\n\t"
-		"addl	%%esi, %%ebx\n\t"
-		"jmp	overheadwriteL1\n\t"
-
-	"overheadoutL1:\n\t"
-		// End measuring
-		"movl	%%ebx, -16(%%ebp)\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Subtract the overhead
-		"movl	-20(%%ebp), %%ebx\n\t"
-		"subl	%%eax, %%ebx\n\t"
-		"movl	%%ebx, %%eax\n\t"
-
-		// Store the results
-		"movl	%%eax, %0\n\t"
-		"movl	-16(%%ebp), %1\n\t"
-
-		// End of routine, pop all that we had pushed
-		"popl	%%edi\n\t"
-		"popl	%%esi\n\t"
-		"popl	%%ebx\n\t"
-
-		"addl	$20, %%esp\n\t"
-		"popl	%%ebp\n\t"
-
-		// Remove the initial user parameters
-		"addl	$16, %%esp\n\t"
-	: "=a" (diff), "=c" (count)
-	: "m" (ptr), "m" (size), "m" (stride), "m" (repeatCount)
-	: "esi"
-	);
-
-	free(ptr);
-	// printf ("Count = %d, diff = %d\n", count/stride, diff);
-
-	return diff / ((float) (count / ((float) stride)));
-}
-
 double allocateAndTestMainMemory(long size, int stride, unsigned char warmup)
 {
 	if (stride > size)
@@ -235,6 +67,7 @@ double allocateAndTestMainMemory(long size, int stride, unsigned char warmup)
 
 	int repeatCount = (warmup == 0 ? 1 : 2);
 
+repeatIfNeg:
 	__asm__ volatile(
 		// Simulate a function call during entry
 		"pushl	%2\n\t"		// 16(%%ebp)
@@ -315,7 +148,6 @@ double allocateAndTestMainMemory(long size, int stride, unsigned char warmup)
 		"je	outMM\n\t"
 		"movl	(%%edx), %%edi\n\t"
 		"movl	%%edi, %%edx\n\t"
-		//"subl	%%esi, %%ecx\n\t"
 		"decl	%%ecx\n\t"
 		"addl	%%esi, %%ebx\n\t"
 		"jmp	writeMM\n\t"
@@ -354,7 +186,6 @@ double allocateAndTestMainMemory(long size, int stride, unsigned char warmup)
 		"cmpl	$0, %%ecx\n\t"
 		"je	overheadoutMM\n\t"
 		"movl	%%edi, %%edx\n\t"
-		//"subl	%%esi, %%ecx\n\t"
 		"decl	%%ecx\n\t"
 		"addl	%%esi, %%ebx\n\t"
 		"jmp	overheadwriteMM\n\t"
@@ -392,6 +223,9 @@ double allocateAndTestMainMemory(long size, int stride, unsigned char warmup)
 	: "esi"
 	);
 
+	if (((long) diff) < 0)
+		goto repeatIfNeg;
+
 	free(ptr);
 	// printf ("Count = %d, diff = %d\n", count/stride, diff);
 
@@ -419,6 +253,7 @@ double allocateAndTest(long size, int stride, unsigned char warmup)
 
 	int repeatCount = (warmup == 0 ? 1 : 2);
 
+repeatIfNeg:
 	__asm__ volatile(
 		// Simulate a function call during entry
 		"pushl	%2\n\t"		// 16(%%ebp)
@@ -573,6 +408,9 @@ double allocateAndTest(long size, int stride, unsigned char warmup)
 	: "m" (ptr), "m" (size), "m" (stride), "m" (repeatCount)
 	: "esi"
 	);
+
+	if (((long) diff) < 0)
+		goto repeatIfNeg;
 
 	free(ptr);
 	// printf ("Count = %d, diff = %d\n", count/stride, diff);
@@ -782,11 +620,10 @@ double getFPSlowLatency()
 		"movl	-20(%%ebp), %%ebx\n\t"
 		"subl	%%eax, %%ebx\n\t"
 		"movl	%%ebx, %%eax\n\t"
-		"movl	-16(%%ebp), %%ebx\n\t"
 
 		// Store the results
 		"movl	%%eax, %0\n\t"
-		"movl	%%ebx, %1\n\t"
+		"movl	-16(%%ebp), %1\n\t"
 
 		// End of routine, pop all that we had pushed
 		"popl	%%edi\n\t"
@@ -1087,7 +924,6 @@ double getTLBLatency(long size)
 
 	"tlbshiftout:\n\t"
 		// Loop a million times
-	//	"movl	$1048576, %%ecx\n\t"
 		"movl	%%ecx, 12(%%ebp)\n\t"
 
 	"tlbrepeat:\n\t"
@@ -1109,7 +945,6 @@ double getTLBLatency(long size)
 		"je	tlbout\n\t"
 		"movl	(%%edx), %%edi\n\t"
 		"movl	%%edi, %%edx\n\t"
-		//"subl	%%esi, %%ecx\n\t"
 		"decl	%%ecx\n\t"
 		"addl	%%esi, %%ebx\n\t"
 		"jmp	tlbwrite\n\t"
@@ -1151,7 +986,6 @@ double getTLBLatency(long size)
 		"cmpl	$0, %%ecx\n\t"
 		"je	tlboverheadout\n\t"
 		"movl	%%edi, %%edx\n\t"
-		//"subl	%%esi, %%ecx\n\t"
 		"decl	%%ecx\n\t"
 		"addl	%%esi, %%ebx\n\t"
 		"jmp	tlboverheadwrite\n\t"
@@ -1194,139 +1028,5 @@ double getTLBLatency(long size)
 
 	return diff / ((float) (count / ((float) stride)));
 }
-
-/*
-double getTLBLatency(long size)
-{
-	int ret, diff, count, stride = getpagesize();
-
-	unsigned char *ptr, *final;
-	if ((ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_POPULATE | MAP_NONBLOCK | MAP_LOCKED | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)) == MAP_FAILED)
-	{
-		perror("mmap");
-		return 0;
-	}
-
-	// Don't repeat.. I know its weird, but setting this to 1 does not cause a repeat execution
-	// Cmon.. trust me!
-	int repeatCount = 1;
-
-	__asm__ volatile(
-		// Simulate a function call during entry
-		"pushl	%2\n\t"		// 16(%%ebp)
-		"pushl	%3\n\t"		// 12(%%ebp)
-		"pushl	%4\n\t"
-		"pushl	%5\n\t"
-
-		// Set up the frame
-		"pushl	%%ebp\n\t"
-		"movl	%%esp, %%ebp\n\t"
-		"subl	$20, %%esp\n\t"
-
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushl	%%ebx\n\t"
-		"pushl	%%esi\n\t"
-		"pushl	%%edi\n\t"
-
-		// Setting up repeat counter
-		"movl	4(%%ebp), %%ebx\n\t"
-		"movl	%%ebx, -4(%%ebp)\n\t"
-
-	"tlbrepeat:\n\t"
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Do some operation
-		"xorl	%%ebx, %%ebx\n\t"
-		"movl	16(%%ebp), %%edx\n\t"
-		"movl	12(%%ebp), %%ecx\n\t"
-		"movl	8(%%ebp), %%esi\n\t"
-
-	"tlbwrite:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	tlbout\n\t"
-		"movl	$0, (%%edx, %%ebx)\n\t"
-		"subl	%%esi, %%ecx\n\t"
-		"addl	%%esi, %%ebx\n\t"
-		"jmp	tlbwrite\n\t"
-
-	"tlbout:\n\t"
-		// End measuring
-		"movl	%%ebx, -16(%%ebp)\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Check if we have to repeat
-		"decl	-4(%%ebp)\n\t"
-		"jnz	tlbrepeat\n\t"
-
-		// Store the result (with overhead)
-		"movl	%%eax, -20(%%ebp)\n\t"
-
-		// Do everything all over again without the actual step to be measured
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Do some operation
-		"xorl	%%ebx, %%ebx\n\t"
-		"movl	16(%%ebp), %%edx\n\t"
-		"movl	12(%%ebp), %%ecx\n\t"
-		"movl	8(%%ebp), %%esi\n\t"
-
-	"overheadtlbwrite:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	overheadtlbout\n\t"
-		"subl	%%esi, %%ecx\n\t"
-		"addl	%%esi, %%ebx\n\t"
-		"jmp	overheadtlbwrite\n\t"
-
-	"overheadtlbout:\n\t"
-		// End measuring
-		"movl	%%ebx, -16(%%ebp)\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Subtract the overhead
-		"movl	-20(%%ebp), %%ebx\n\t"
-		"subl	%%eax, %%ebx\n\t"
-		"movl	%%ebx, %%eax\n\t"
-
-		// Store the results
-		"movl	%%eax, %0\n\t"
-		"movl	-16(%%ebp), %1\n\t"
-
-		// End of routine, pop all that we had pushed
-		"popl	%%edi\n\t"
-		"popl	%%esi\n\t"
-		"popl	%%ebx\n\t"
-
-		"addl	$16, %%esp\n\t"
-		"popl	%%ebp\n\t"
-
-		// Remove the initial user parameters
-		"addl	$20, %%esp\n\t"
-	: "=a" (diff), "=c" (count)
-	: "m" (ptr), "m" (size), "m" (stride), "m" (repeatCount)
-	: "esi"
-	);
-
-	munmap (ptr, size);
-	return diff / ((float) (count / ((float) stride)));
-}
-*/
 
 #endif /* GENERIC_H_ */

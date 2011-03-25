@@ -33,8 +33,9 @@ typedef struct
 enum { EAX=0, EBX, ECX, EDX };
 
 #ifdef __GNUC__
-void mycpuid( int * p, unsigned int param )
+void mycpuid( int * p, unsigned int param, unsigned int ecx )
 {
+#ifndef	__x86_64
    __asm__ __volatile__
    (
       "pushl	%%ebx\n\t"
@@ -42,11 +43,21 @@ void mycpuid( int * p, unsigned int param )
       "movl	%%ebx, %1\n\t"
       "popl	%%ebx"
       : "=a" (p[0]), "=r" (p[1]), "=c" (p[2]), "=d" (p[3])
-      : "a" (param)
+      : "a" (param), "c" (ecx)
       : "cc"
    );
+#else
+   __asm__ __volatile__
+   (
+      "cpuid\n\t"
+      : "=a" (p[0]), "=b" (p[1]), "=c" (p[2]), "=d" (p[3])
+      : "a" (param), "c" (ecx)
+      : "cc"
+   );
+#endif
 }
 #else /* not __GNUC__ */
+#if 0
 void mycpuid( int * p, unsigned int param )
 {
 #ifndef __x86_64
@@ -77,52 +88,52 @@ void mycpuid( int * p, unsigned int param )
    );
 #endif /* __x86_64 */
 }
+#endif
 
 #endif /* __GNUC__ */
 
 #define __cpuid mycpuid
-
-/*
-void lockToLogicalProcessor( int n )
-{
-   int rc;
-   cpu_set_t cpuset;
-   memset( &cpuset, 0, sizeof( cpu_set_t ) );
-   CPU_SET( n, &cpuset );
-   rc = sched_setaffinity( 0, // this process
-                          sizeof( cpu_set_t ),
-                          &cpuset );
-}
-*/
-
-/*
-int getNumberOfProcessors()
-{
-	return (int) sysconf( _SC_NPROCESSORS_ONLN );
-}
-*/
 
 int isCPUIDSupported()
 {
 	#ifdef	_NO_CPUID
 		return 0;
 	#else
-	        int supported = 2;
-        	asm (
-	                "pushfl\n\t"
-        	        "popl   %%eax\n\t"
-                	"movl   %%eax, %%ecx\n\t"
-	                "xorl   $0x200000, %%eax\n\t"
-        	        "pushl  %%eax\n\t"
-	                "popfl\n\t"
+		#ifndef	__x86_64
+			int supported = 2;
+			asm (
+				"pushfl\n\t"
+				"popl	%%eax\n\t"
+				"movl	%%eax, %%ecx\n\t"
+				"xorl	$0x200000, %%eax\n\t"
+				"pushl	%%eax\n\t"
+				"popfl\n\t"
 
-	                "pushfl\n\t"
-        	        "popl   %%eax\n\t"
-	                "xorl   %%ecx, %%eax\n\t"
-        	        "movl   %%eax, %0\n\t"
-	        : "=r" (supported)
-        	:: "eax", "ecx"
-	        );
+				"pushfl\n\t"
+				"popl	%%eax\n\t"
+				"xorl	%%ecx, %%eax\n\t"
+				"movl	%%eax, %0\n\t"
+				: "=r" (supported)
+				:: "eax", "ecx"
+			);
+		#else
+			int supported = 2;
+			asm (
+				"pushfq\n\t"
+				"popq   %%rax\n\t"
+				"movq   %%rax, %%rcx\n\t"
+				"xorq   $0x200000, %%rax\n\t"
+				"pushq  %%rax\n\t"
+				"popfq\n\t"
+
+				"pushfq\n\t"
+				"popq   %%rax\n\t"
+				"xorl   %%ecx, %%eax\n\t"
+				"movl   %%eax, %0\n\t"
+				: "=r" (supported)
+				:: "eax", "ecx"
+			);
+		#endif
 
         	return supported != 0;
 	#endif
