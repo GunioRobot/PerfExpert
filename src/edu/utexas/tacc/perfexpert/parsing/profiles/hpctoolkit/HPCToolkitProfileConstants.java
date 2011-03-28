@@ -102,7 +102,7 @@ public class HPCToolkitProfileConstants
 			perfCounterTranslation.put(metricName, discoveredMetrics);
 			HPCToPETranslation.add(HPCToolkitIndex, discoveredMetrics);
 
-			log.debug("Registered new metric " + metricName + " at location: " + discoveredMetrics);
+			log.debug("Registered new metric " + metricName + " with mapping: " + HPCToolkitIndex + " -> " + discoveredMetrics);
 			discoveredMetrics++;
 		}
 	}
