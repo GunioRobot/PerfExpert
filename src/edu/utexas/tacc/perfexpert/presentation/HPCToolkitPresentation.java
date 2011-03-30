@@ -100,7 +100,8 @@ public class HPCToolkitPresentation
 			{
 				if (profile.getCodeSectionInfo().equals("Aggregate"))
 				{
-					System.out.println ("Total running time for \"" + file02 + "\" is " + doubleFormat.format(profile.getMetricBasedOnPEIndex(indexOfCycles)/cpuFrequency) + " sec");
+					Integer indexOfCycles2 = profile.getConstants().getPerfCounterTranslation().get("PAPI_TOT_CYC");
+					System.out.println ("Total running time for \"" + file02 + "\" is " + doubleFormat.format(profile.getMetricBasedOnPEIndex(indexOfCycles2)/cpuFrequency) + " sec");
 					break;
 				}
 			}
