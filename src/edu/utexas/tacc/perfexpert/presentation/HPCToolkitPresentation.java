@@ -39,7 +39,7 @@ public class HPCToolkitPresentation
 	static short maxBarWidth = 47;
 	enum Metric { METRIC_RATIO, METRIC_LCPI };
 	static Logger log = Logger.getLogger( HPCToolkitPresentation.class );
-	public static void presentSummaryProfiles(List<HPCToolkitProfile> profiles01, List<HPCToolkitProfile> profiles02, LCPIConfigManager lcpiConfig, MachineConfigManager machineConfig)
+	public static void presentSummaryProfiles(List<HPCToolkitProfile> profiles01, List<HPCToolkitProfile> profiles02, LCPIConfigManager lcpiConfig, MachineConfigManager machineConfig, String file01, String file02)
 	{
 		Metric metricType;
 
@@ -85,17 +85,27 @@ public class HPCToolkitPresentation
 
 		long cpuFrequency = Long.parseLong(machineConfig.getProperties().getProperty("CPU_freq"));
 
-		if (profiles02 == null)
+		for (HPCToolkitProfile profile : profiles01)
 		{
-			for (HPCToolkitProfile profile : profiles01)
+			if (profile.getCodeSectionInfo().equals("Aggregate"))
+			{
+				System.out.println ("Total running time for \"" + file01 + "\" is " + doubleFormat.format(profile.getMetricBasedOnPEIndex(indexOfCycles)/cpuFrequency) + " sec");
+				break;
+			}
+		}
+
+		if (profiles02 != null)
+		{
+			for (HPCToolkitProfile profile : profiles02)
 			{
 				if (profile.getCodeSectionInfo().equals("Aggregate"))
 				{
-					System.out.println ("Total running time is " + doubleFormat.format(profile.getMetricBasedOnPEIndex(indexOfCycles)/cpuFrequency) + " sec");
+					System.out.println ("Total running time for \"" + file02 + "\" is " + doubleFormat.format(profile.getMetricBasedOnPEIndex(indexOfCycles)/cpuFrequency) + " sec");
 					break;
 				}
 			}
 		}
+
 
 		double dCPIThreshold = Double.parseDouble(CPIThreshold);
 		for (HPCToolkitProfile profile : profiles01)

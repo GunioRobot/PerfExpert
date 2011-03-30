@@ -125,6 +125,6 @@ public class PerfExpert
 			profiles02 = parser02.parse();
 		}
 
-		HPCToolkitPresentation.presentSummaryProfiles(profiles01, profiles02, lcpiConfig, machineConfig);
+		HPCToolkitPresentation.presentSummaryProfiles(profiles01, profiles02, lcpiConfig, machineConfig, filename01, filename02);
 	}
 }
