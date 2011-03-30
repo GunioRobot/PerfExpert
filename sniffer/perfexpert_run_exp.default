@@ -60,9 +60,26 @@ then
 	arguments=${*};
 fi;
 
+# If it is in ${PATH}, form the absolute path
+fullPath=`which ${program_name} 2>/dev/null`
+if [ ${?} -ne 0 ]
+then
+	# Try checking if the file is in the current directory
+	if [ -x ./${program_name} ]
+	then
+		fullPath=./${program_name}
+	else
+		# Instead of raising an error, use the program name as it is
+		fullPath=${program_name}
+	fi
+fi
+
+# Set the original variable back
+program_name=${fullPath}
+
 if [ ! -f ${program_name} ]
 then
-	echo "Could not find file: ${program_name}, try entering the absolute path";
+	echo "Could not run file: ${program_name}, try entering the absolute path";
 	exit 1;
 fi
 
