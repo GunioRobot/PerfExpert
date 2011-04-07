@@ -115,8 +115,15 @@ done
 
 ${HPCTOOLKIT_BIN}/hpcprof --force-metric --metric=thread --struct ${tempDir}/hpcstruct --output ${tempDir}/database ${tempDir}/measurements;
 
+# Generate output filename
+output_filename="experiment-${JOB_NAME}.o${JOB_ID}.xml"
+if [ "x${JOB_NAME}" == "x" ]
+then
+	output_filename="experiment.xml"
+fi
+
 # Get the final experiment.xml here
-mv ${tempDir}/database/experiment.xml ./experiment-$JOB_NAME.o$JOB_ID.xml
+mv ${tempDir}/database/experiment.xml ./${output_filename}
 
 # Clean up
 rm -rf ${tempDir};
@@ -124,4 +131,4 @@ rm -f core;
 
 echo
 echo "Run the following command to analyze the measurement data:"
-echo "perfexpert <threshold-between-0-and-1> ./experiment-$JOB_NAME.o$JOB_ID.xml"
+echo "perfexpert <threshold-between-0-and-1> ./${output_filename}"
