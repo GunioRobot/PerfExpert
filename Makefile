@@ -26,7 +26,7 @@ build-hound:
 
 sniffer:	build-sniffer
 	-mkdir config/
-	cd sniffer/ && ./bin/sniffer && mv lcpi.properties ../config/lcpi.properties && ./patch_run.sh && cd ..
+	cd sniffer/ && LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(PAPI_LIBS) ./bin/sniffer && mv lcpi.properties ../config/lcpi.properties && ./patch_run.sh && cd ..
 
 build-sniffer:
 	cd sniffer/ && make CFLAGS="$(SNIFFER_CFLAGS)" LDFLAGS="$(SNIFFER_LDFLAGS)" && cd ..
