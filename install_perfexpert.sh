@@ -58,6 +58,7 @@ install ./config/machine.properties "${PERFEXPERT_HOME}/config/machine.propertie
 install ./config/lcpi.properties "${PERFEXPERT_HOME}/config/lcpi.properties"
 install ./bin/perfexpert.jar "${PERFEXPERT_HOME}/bin/perfexpert.jar"
 install ./perfexpert "${PERFEXPERT_HOME}/perfexpert"
+install ./lib/JSAP-2.1.jar "${PERFEXPERT_HOME}/lib/JSAP-2.1.jar"
 install ./lib/log4j-1.2.16.jar "${PERFEXPERT_HOME}/lib/log4j-1.2.16.jar"
 install ./lib/log4j.properties "${PERFEXPERT_HOME}/lib/log4j.properties"
 
