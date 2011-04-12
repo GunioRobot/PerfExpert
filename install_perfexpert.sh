@@ -14,12 +14,12 @@ then
 	exit 1
 fi
 
-if [ "x${PERFEXPERT_HOME}" == "x" ]
+trimmed=`echo ${PERFEXPERT_HOME} | sed 's/ //g' | sed 's/\///g'`
+if [ "x${trimmed}" == "x" ]
 then
 	# Try system-wide installation first
 	PERFEXPERT_HOME=/opt/apps/perfexpert
-	echo "The shell variable \${PERFEXPERT_HOME}  was not set, defaulting to /opt/apps/perfexpert"
-	# read -p "Directory to install PerfExpert in: (absolute path) " PERFEXPERT_HOME
+	echo "The shell variable \${PERFEXPERT_HOME} was not set or was set to an invalid value, defaulting to /opt/apps/perfexpert"
 else
 	echo "Using shell variable \${PERFEXPERT_HOME} set to \"${PERFEXPERT_HOME}\""
 fi
@@ -39,12 +39,13 @@ then
 fi
 
 # Empty out the existing contents
-if [ "x${PERFEXPERT_HOME}" != "x" ]
+trimmed=`echo ${PERFEXPERT_HOME} | sed 's/ //g' | sed 's/\///g'`
+if [ "x${trimmed}" != "x" ]
 then
 	rm -rf "${PERFEXPERT_HOME}/"
 	mkdir "${PERFEXPERT_HOME}"
 else
-	echo "\${PERFEXPERT_HOME} was not set, weird..."
+	echo "\${PERFEXPERT_HOME} was not set or was set to an invalid path..."
 	exit 1
 fi
 
