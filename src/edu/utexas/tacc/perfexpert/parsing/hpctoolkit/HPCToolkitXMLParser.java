@@ -40,6 +40,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 	Logger log = Logger.getLogger( HPCToolkitXMLParser.class );
 
 	boolean inCallSite = false;
+	boolean aggregateOnly = false;
 	boolean aggregateRecorded = false;
 	
 	int metrics = 0;
@@ -64,6 +65,11 @@ public class HPCToolkitXMLParser extends DefaultHandler
 	{
 		this.LCPIConfig = LCPIConfig;
 	}
+
+	public void setIfAggregateOnly(boolean aggregateOnly)
+	{
+		this.aggregateOnly = aggregateOnly;
+	}
 	
 	@Override
 	public void startDocument()
@@ -72,7 +78,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 	}
 
 	@Override
-	public void startElement(String uri, String localName, String qName, Attributes attr)
+	public void startElement(String uri, String localName, String qName, Attributes attr) throws XMLParsingDoneException
 	{
 		if (inCallSite)	// Everything to be ignored till we see a ending "C" element
 		{
@@ -86,6 +92,8 @@ public class HPCToolkitXMLParser extends DefaultHandler
 			profile = null;
 			aggregateRecorded = true;
 			setAggregateCyclesFromRootProfile();
+
+			if (aggregateOnly)	throw new XMLParsingDoneException();
 
 			int lineNumber = Integer.parseInt(attr.getValue("l"));
 			String procedureName = attr.getValue("n");
@@ -107,6 +115,8 @@ public class HPCToolkitXMLParser extends DefaultHandler
 			profile = null;
 			aggregateRecorded = true;
 			setAggregateCyclesFromRootProfile();
+
+			if (aggregateOnly)	throw new XMLParsingDoneException();
 
 			int lineNumber = Integer.parseInt(attr.getValue("l"));
 			String codeSection = formatCodeSection(lineNumber, false);
@@ -162,6 +172,8 @@ public class HPCToolkitXMLParser extends DefaultHandler
 			aggregateRecorded = true;
 			setAggregateCyclesFromRootProfile();
 
+			if (aggregateOnly)	throw new XMLParsingDoneException();
+
 			filename = attr.getValue("n");
 			log.debug("Found a new \"F\" element for \"" + filename + "\"");
 			return;
@@ -172,6 +184,8 @@ public class HPCToolkitXMLParser extends DefaultHandler
 			profile = null;
 			aggregateRecorded = true;
 			setAggregateCyclesFromRootProfile();
+
+			if (aggregateOnly)	throw new XMLParsingDoneException();
 
 			loadedModule = attr.getValue("n");
 			log.debug("Found new loaded module " + loadedModule);
@@ -184,6 +198,8 @@ public class HPCToolkitXMLParser extends DefaultHandler
 			profile = null;
 			aggregateRecorded = true;
 			setAggregateCyclesFromRootProfile();
+
+			if (aggregateOnly)	throw new XMLParsingDoneException();
 			
 			log.debug("Not processing \"S\" element");
 			return;
@@ -195,6 +211,8 @@ public class HPCToolkitXMLParser extends DefaultHandler
 			profile = null;
 			aggregateRecorded = true;
 			setAggregateCyclesFromRootProfile();
+
+			if (aggregateOnly)	throw new XMLParsingDoneException();
 
 			log.debug("Found a \"C\" element, skipping till corresponding ending element is found");
 			inCallSite = true;

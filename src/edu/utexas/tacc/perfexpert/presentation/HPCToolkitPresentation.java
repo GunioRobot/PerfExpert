@@ -39,7 +39,7 @@ public class HPCToolkitPresentation
 	static short maxBarWidth = 47;
 	enum Metric { METRIC_RATIO, METRIC_LCPI };
 	static Logger log = Logger.getLogger( HPCToolkitPresentation.class );
-	public static void presentSummaryProfiles(List<HPCToolkitProfile> profiles01, List<HPCToolkitProfile> profiles02, LCPIConfigManager lcpiConfig, MachineConfigManager machineConfig, String file01, String file02)
+	public static void presentSummaryProfiles(List<HPCToolkitProfile> profiles01, List<HPCToolkitProfile> profiles02, LCPIConfigManager lcpiConfig, MachineConfigManager machineConfig, String file01, String file02, boolean aggregateOnly)
 	{
 		Metric metricType;
 
@@ -111,7 +111,11 @@ public class HPCToolkitPresentation
 		double dCPIThreshold = Double.parseDouble(CPIThreshold);
 		for (HPCToolkitProfile profile : profiles01)
 		{
-			if (profile.getCodeSectionInfo().equals("Aggregate") || profile.getImportance() == -1)
+			if ((profile.getCodeSectionInfo().equals("Aggregate") && !aggregateOnly) ||
+				(aggregateOnly && !profile.getCodeSectionInfo().equals("Aggregate")))
+				continue;
+
+			if (profile.getImportance() == -1)
 				continue;
 
 			double cycles = profile.getMetricBasedOnPEIndex(indexOfCycles);			

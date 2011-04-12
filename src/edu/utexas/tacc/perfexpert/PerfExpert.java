@@ -28,6 +28,13 @@ import java.util.regex.Matcher;
 
 import org.apache.log4j.Logger;
 
+import com.martiansoftware.jsap.JSAP;
+import com.martiansoftware.jsap.Switch;
+import com.martiansoftware.jsap.JSAPResult;
+import com.martiansoftware.jsap.UnflaggedOption;
+import com.martiansoftware.jsap.stringparsers.DoubleStringParser;
+import com.martiansoftware.jsap.stringparsers.StringStringParser;
+
 import edu.utexas.tacc.perfexpert.configuration.LCPIConfigManager;
 import edu.utexas.tacc.perfexpert.configuration.MachineConfigManager;
 import edu.utexas.tacc.perfexpert.configuration.PerfExpertConfigManager;
@@ -37,6 +44,12 @@ import edu.utexas.tacc.perfexpert.presentation.HPCToolkitPresentation;
 
 public class PerfExpert
 {
+	public static void printHelp(JSAP parser)
+	{
+		System.out.println ("\nUSAGE: perfexpert " + parser.getUsage() + "\n");
+		System.out.println (parser.getHelp());
+	}
+
 	public static void main(String[] args) throws Exception
 	{
 		Logger log = Logger.getLogger( PerfExpert.class );
@@ -57,45 +70,35 @@ public class PerfExpert
 			System.exit(1);
 		}
 
-		if (args.length < 2 || args.length > 3)
+		JSAP parser = new JSAP();
+		Switch helpSwitch = new Switch("help", 'h', "help", "Show this help screen");
+		Switch aggregateSwitch = new Switch("aggregate", 'a', "aggregate", "Show whole-program information only, no function- or loop-level information");
+
+		UnflaggedOption thresholdParam = new UnflaggedOption("threshold", DoubleStringParser.getParser(), true, "Threshold between 0 and 1");
+		UnflaggedOption xml1 = new UnflaggedOption("experiment1.xml", StringStringParser.getParser(), true, "experiment.xml file generated using `perfexpert_run_exp'");
+		UnflaggedOption xml2 = new UnflaggedOption("experiment2.xml", StringStringParser.getParser(), false, "second experiment.xml file, for comparison only");
+
+		xml1.setUsageName("experiment.xml");
+		xml2.setUsageName("experiment.xml");
+
+		parser.registerParameter(helpSwitch);
+		parser.registerParameter(aggregateSwitch);
+		parser.registerParameter(thresholdParam);
+		parser.registerParameter(xml1);
+		parser.registerParameter(xml2);
+
+		JSAPResult result = parser.parse(args);
+
+		if (!result.success() || result.getBoolean("help") || result.getDouble("threshold") <= 0 || result.getDouble("threshold") > 1.0)
 		{
-			System.out.println("USAGE: PerfExpert threshold first-input-file [second-input-file]");
-			System.exit(1);
+			printHelp(parser);
+			System.exit(0);
 		}
 
-		Double threshold = 0.1; 
-		try
-		{
-			threshold = Double.parseDouble(args[0]);
-		} catch (NumberFormatException e)
-		{
-			log.error("Threshold parameter was invalid, expected a double, instead found \"" + args[0] + "\"");
-			return;
-		}
-
-		if (threshold == null || threshold < 0 || threshold > 1.0)
-		{
-			log.error("Threshold parameter was invalid, expected a double between 0 and 1, instead found \"" + args[0] + "\"");
-			return;
-		}
-
-		String filename01 = args[1];
-		if (filename01 == null || filename01.isEmpty())
-		{
-			log.error("Invalid filename passed as input \"" + filename01 + "\"");
-			return;
-		}
-
-		String filename02 = null;
-		if (args.length == 3)
-		{
-			filename02 = args[2];
-			if (filename02 == null || filename02.isEmpty())
-			{
-				log.error("Invalid filename passed as input \"" + filename02 + "\"");
-				return;
-			}
-		}
+		boolean aggregateOnly = result.getBoolean("aggregate");
+		Double threshold = result.getDouble("threshold");
+		String filename01 = result.getString("experiment1.xml");
+		String filename02 = result.getString("experiment2.xml");
 
 		log.debug("PerfExpert invoked with arguments: " + threshold + ", " + filename01 + ", " + filename02);
 
@@ -117,14 +120,14 @@ public class PerfExpert
 		List<HPCToolkitProfile> profiles01 = null, profiles02 = null;
 
 		HPCToolkitParser parser01 = new HPCToolkitParser(HPCDATA_LOCATION, threshold, "file://" + filename01, lcpiConfig.getProperties());
-		profiles01 = parser01.parse();
+		profiles01 = parser01.parse(aggregateOnly);
 
 		if (filename02 != null)
 		{
 			HPCToolkitParser parser02 = new HPCToolkitParser(HPCDATA_LOCATION, 0, "file://" + filename02, lcpiConfig.getProperties());
-			profiles02 = parser02.parse();
+			profiles02 = parser02.parse(aggregateOnly);
 		}
 
-		HPCToolkitPresentation.presentSummaryProfiles(profiles01, profiles02, lcpiConfig, machineConfig, filename01, filename02);
+		HPCToolkitPresentation.presentSummaryProfiles(profiles01, profiles02, lcpiConfig, machineConfig, filename01, filename02, aggregateOnly);
 	}
 }

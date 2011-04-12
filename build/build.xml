@@ -12,6 +12,7 @@
     <path id="PerfExpert.classpath">
         <pathelement location="bin"/>
         <pathelement location="lib/log4j-1.2.16.jar"/>
+        <pathelement location="lib/JSAP-2.1.jar"/>
     </path>
     <target name="init">
         <mkdir dir="bin"/>

@@ -60,7 +60,7 @@ public class HPCToolkitParser extends AParser
 		return profiles;
 	}
 
-	public List<HPCToolkitProfile> parse()
+	public List<HPCToolkitProfile> parse(boolean aggregateOnly)
 	{
 		if (profiles != null && profiles.size() != 0)
 		{
@@ -123,7 +123,7 @@ public class HPCToolkitParser extends AParser
 			
 			// Get the big wheels turning...
 			// Parse the XML now and load profiles
-			process(convertedFilename);
+			process(convertedFilename, aggregateOnly);
 			
 			// Sort profiles in descending order by importance, ignore (0) because it contains the root (aggregate) profile
 			// Collections.sort(profiles);
@@ -147,11 +147,12 @@ public class HPCToolkitParser extends AParser
 		return profiles;
 	}
 
-	void doXMLParsing(String filename)
+	void doXMLParsing(String filename, boolean aggregateOnly)
 	{
 		HPCToolkitXMLParser xmlParser = new HPCToolkitXMLParser();
 		xmlParser.setThreshold(threshold);
 		xmlParser.setLCPIConfig(LCPIConfig);
+		xmlParser.setIfAggregateOnly(aggregateOnly);
 
 		SAXParserFactory parserFactory = SAXParserFactory.newInstance();
 
@@ -159,6 +160,13 @@ public class HPCToolkitParser extends AParser
 		{
 			javax.xml.parsers.SAXParser parser = parserFactory.newSAXParser();
 			parser.parse(filename, xmlParser);
+		}
+		catch (XMLParsingDoneException e)
+		{
+			// This just indicates that we finished (rather terminated) XML processing.
+			// This never implies an unclean termination, so we don't throw an error.
+
+			;
 		}
 		catch (SAXException e)
 		{
@@ -175,11 +183,11 @@ public class HPCToolkitParser extends AParser
 		log.debug("Recorded " + profiles.size() + " profiles");
 	}
 	
-	void process(String filename)
+	void process(String filename, boolean aggregateOnly)
 	{
 		// Fire up the XML parser and get the list of collected profiles
 		// Profiles are saved from within the method.. Bad design? Likely!
-		doXMLParsing(filename);
+		doXMLParsing(filename, aggregateOnly);
 		
 		if (profiles.size() == 0)
 		{
