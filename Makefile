@@ -35,12 +35,11 @@ install:
 	./install_perfexpert.sh
 
 clean:
-	rm -f ./bin/perfexpert.jar
 	cd hound/ && make clean && cd ..
 	rm -f ./hound/machine.properties
 	cd sniffer/ && make clean && cd ..
 	rm -f ./sniffer/lcpi.properties ./sniffer/experiment.header.tmp
 
 distclean:	clean
-	rm -f ./perfexpert_run_exp ./config/machine.properties ./config/lcpi.properties ./perfexpert.properties
+	rm -f ./bin/perfexpert.jar ./perfexpert_run_exp ./config/machine.properties ./config/lcpi.properties ./perfexpert.properties
 	rm -rf ./config
