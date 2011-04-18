@@ -23,7 +23,7 @@ else
 
 	if [ ${?} != "0" ]
 	then
-		echo "Build failed. Please correct build problems or place a compiled perfexpert.jar in ${PERFEXPERT_HOME}/lib and try again";
+		echo "Build failed. Please correct build problems or place a compiled perfexpert.jar in ${PERFEXPERT_HOME}/bin and try again";
 		exit 1;
 	else
 		echo "Starting PerfExpert...";
