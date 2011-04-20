@@ -89,7 +89,7 @@ public class PerfExpert
 
 		JSAPResult result = parser.parse(args);
 
-		if (!result.success() || result.getBoolean("help") || result.getDouble("threshold") <= 0 || result.getDouble("threshold") > 1.0)
+		if (!result.success() || result.getBoolean("help") || result.getDouble("threshold") < 0 || result.getDouble("threshold") > 1.0)
 		{
 			printHelp(parser);
 			System.exit(0);
