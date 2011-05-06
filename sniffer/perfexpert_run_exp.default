@@ -103,17 +103,26 @@ then
 	cp ${hpcstruct_file} ${tempDir}/hpcstruct;
 else
 	# Else generate it
+	echo -n "PerfExpert: Generating program structure using hpcstruct..."
 	${HPCTOOLKIT_BIN}/hpcstruct --output ${tempDir}/hpcstruct ${program_name};
+	echo "done!"
 fi
 
 # Run experiments with different configurations
 for index in $(seq 0 $((${#experiment[@]}-1)))
 do
+	echo
+	echo "PerfExpert: Program execution #$((${index}+1)) of ${#experiment[@]}"
 	cmd="${HPCTOOLKIT_BIN}/hpcrun ${experiment[${index}]} --output ${tempDir}/measurements ${program_name} ${arguments}";
 	eval ${cmd};
 done
 
-${HPCTOOLKIT_BIN}/hpcprof --force-metric --metric=thread --struct ${tempDir}/hpcstruct --output ${tempDir}/database ${tempDir}/measurements;
+echo
+echo -n "PerfExpert: Finished all measurements, summarizing the results..."
+${HPCTOOLKIT_BIN}/hpcprof --force-metric --metric=thread --struct ${tempDir}/hpcstruct --output ${tempDir}/database ${tempDir}/measurements &> ${tempDir}/hpcprof.message
+cat ${tempDir}/hpcprof.message >> perfexpert.log
+
+echo "done!"
 
 # Generate output filename
 output_filename="experiment-${JOB_NAME}.o${JOB_ID}.xml"
@@ -129,6 +138,5 @@ mv ${tempDir}/database/experiment.xml ./${output_filename}
 rm -rf ${tempDir};
 rm -f core;
 
-echo
-echo "Run the following command to analyze the measurement data:"
+echo "PerfExpert: Run the following command to analyze the measurement data:"
 echo "perfexpert <threshold-between-0-and-1> ./${output_filename}"
