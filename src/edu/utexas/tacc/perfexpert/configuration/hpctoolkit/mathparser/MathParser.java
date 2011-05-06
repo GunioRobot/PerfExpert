@@ -52,7 +52,7 @@ public class MathParser implements MathParserConstants {
                 // If not present in both, log an error and return 0;
 
                 String machineValue = machineConfig.getProperty(token);
-                if (machineValue == null || machineValue.isEmpty())
+                if (machineValue == null || machineValue.length() == 0)
                 {
                         // Check among perf counters
                         Integer index = profile.getConstants().getPerfCounterTranslation().get(token);

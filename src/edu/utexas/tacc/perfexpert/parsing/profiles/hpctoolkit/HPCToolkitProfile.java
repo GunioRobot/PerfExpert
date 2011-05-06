@@ -27,7 +27,7 @@ import org.apache.log4j.Logger;
 
 import edu.utexas.tacc.perfexpert.parsing.profiles.AProfile;
 
-public class HPCToolkitProfile extends AProfile implements Comparable<HPCToolkitProfile>
+public class HPCToolkitProfile extends AProfile
 {
 	Logger log = Logger.getLogger( HPCToolkitProfile.class );
 
@@ -184,12 +184,6 @@ public class HPCToolkitProfile extends AProfile implements Comparable<HPCToolkit
 	public void setImportance(double importance)
 	{
 		this.importance = importance;
-	}
-
-	@Override
-	public int compareTo(HPCToolkitProfile o)
-	{
-		return (int) (importance - o.getImportance()); 
 	}
 
 	// To maintain consistency of results with Perl version
