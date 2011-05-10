@@ -302,7 +302,7 @@ int main( int argc, char * argv[] )
 			{
 				#ifdef	DEBUG_PRINT
 					if (lpCache->info.cacheOrTLB == CACHE)
-						printf ("DEBUG: Measuring latency of L1 %s cache, line size: %d bytes, total size: %d KB\n", getCacheType(lpCache->info.type), lpCache->info.lineSize, lpCache->info.lineSize * lpCache->info.lineCount);
+						printf ("DEBUG: Measuring latency of L1 %s cache, line size: %d bytes, total size: %.1lf KB\n", getCacheType(lpCache->info.type), lpCache->info.lineSize, lpCache->info.lineSize * lpCache->info.lineCount / 1024.0);
 				#endif
 
 				for (i=0; i<COLLECTION_SIZE; i++)
@@ -330,7 +330,7 @@ int main( int argc, char * argv[] )
 			{
 				#ifdef	DEBUG_PRINT
 					if (lpCache->info.cacheOrTLB == CACHE)
-						printf ("DEBUG: Measuring latency of L2 %s cache, line size: %d bytes, total size: %d KB\n", getCacheType(lpCache->info.type), lpCache->info.lineSize, lpCache->info.lineSize * lpCache->info.lineCount);
+						printf ("DEBUG: Measuring latency of L2 %s cache, line size: %d bytes, total size: %.1lf KB\n", getCacheType(lpCache->info.type), lpCache->info.lineSize, lpCache->info.lineSize * lpCache->info.lineCount / 1024.0);
 				#endif
 
 				for (i=0; i<COLLECTION_SIZE; i++)
@@ -352,7 +352,7 @@ int main( int argc, char * argv[] )
 		{
 			#ifdef	DEBUG_PRINT
 				if (lpCache->info.cacheOrTLB == CACHE)
-					printf ("DEBUG: Measuring latency of L3 %s cache, line size: %d bytes, total size: %d KB\n", getCacheType(lpCache->info.type), lpCache->info.lineSize, lpCache->info.lineSize * lpCache->info.lineCount);
+					printf ("DEBUG: Measuring latency of L3 %s cache, line size: %d bytes, total size: %.1lf KB\n", getCacheType(lpCache->info.type), lpCache->info.lineSize, lpCache->info.lineSize * lpCache->info.lineCount / 1024.0);
 				else
 					printf ("DEBUG: Was not expecting anything other than cache, however found an item with code '%d' in the list, ignoring...\n", lpCache->info.cacheOrTLB);
 			#endif
