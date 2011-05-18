@@ -124,6 +124,13 @@ public class HPCToolkitProfile extends AProfile
 				// Erase other values and use this one from fresh
 				perfValues[PEIndex] = value;
 				counts[PEIndex] = 1;
+
+				if (PEIndex == profileConstants.indexOfInstructions)
+				{
+					// Adjust min and max
+					minInstructions = value;
+					maxInstructions = value;
+				}
 			}
 			else if (ratio > 3)
 			{
@@ -134,19 +141,26 @@ public class HPCToolkitProfile extends AProfile
 			{
 				perfValues[PEIndex] += value;
 				counts[PEIndex]++;
+
+				if (PEIndex == profileConstants.indexOfInstructions)
+				{
+					// Adjust min and max
+					if (minInstructions > value)	minInstructions = value;
+					if (maxInstructions < value)	maxInstructions = value;
+				}
 			}
 		}
 		else
 		{
 			perfValues[PEIndex] += value;
 			counts[PEIndex]++;
-		}
-		
-		if (PEIndex == profileConstants.indexOfInstructions)
-		{
-			// Adjust min and max
-			if (minInstructions > value)	minInstructions = value;
-			if (maxInstructions < value)	maxInstructions = value;
+
+			if (PEIndex == profileConstants.indexOfInstructions)
+			{
+				// Adjust min and max
+				if (minInstructions > value)	minInstructions = value;
+				if (maxInstructions < value)	maxInstructions = value;
+			}
 		}
 		
 		if (PEIndex == profileConstants.indexOfCycles)
