@@ -34,7 +34,7 @@ public class HPCToolkitProfileConstants
 	Logger log = Logger.getLogger( HPCToolkitProfileConstants.class );
 
 	Map<String,Integer> perfCounterTranslation = new HashMap<String,Integer>();
-	List<Integer> HPCToPETranslation = new ArrayList<Integer>();
+	Map<Integer,Integer> HPCToPETranslation = new HashMap<Integer,Integer>();
 	Map<String,Integer> lcpiTranslation = new HashMap<String,Integer>();
 
 	int indexOfInstructions = -1;
@@ -46,17 +46,17 @@ public class HPCToolkitProfileConstants
 	{
 		return perfCounterTranslation;
 	}
-	
+
 	public Map<String,Integer> getLCPITranslation()
 	{
 		return lcpiTranslation;
 	}
-	
+
 	public void setPerfCounterTranslation(Map<String,Integer> perfCounterTranslation)
 	{
 		this.perfCounterTranslation = perfCounterTranslation;
 	}
-	
+
 	public void setLCPITranslation(Map<String,Integer> lcpiTranslation)
 	{
 		this.lcpiTranslation = lcpiTranslation;
@@ -66,41 +66,41 @@ public class HPCToolkitProfileConstants
 	{
 		return indexOfCycles;
 	}
-	
+
 	public int getIndexOfInstructions()
 	{
 		return indexOfInstructions;
 	}
-	
+
 	public long getAggregateCycles()
 	{
 		return aggregateCycles;
 	}
-	
+
 	public void setAggregateCycles(long aggregateCycles)
 	{
 		this.aggregateCycles = aggregateCycles;
 	}
-	
+
 	public void registerMetric(int HPCToolkitIndex, String metricName)
 	{
 		if (perfCounterTranslation.containsKey(metricName))	// Register the duplicate
 		{
 			// WARNING: There is a one-to-one correspondence between the position of the element within HPCToPETranslation and HPCToolkitIndex
 			log.debug("Registered translation for duplicate metric " + metricName + ", was recorded at " + perfCounterTranslation.get(metricName));
-			HPCToPETranslation.add(HPCToolkitIndex, perfCounterTranslation.get(metricName));
+			HPCToPETranslation.put(HPCToolkitIndex, perfCounterTranslation.get(metricName));
 		}
 		else	// Register new metric
 		{
 			// Since we will require this frequently, it is best if we don't turn to the HashMap everytime
 			if (metricName.equals("PAPI_TOT_INS"))
 				indexOfInstructions = discoveredMetrics;
-			
+
 			if (metricName.equals("PAPI_TOT_CYC"))
 				indexOfCycles = discoveredMetrics;
-			
+
 			perfCounterTranslation.put(metricName, discoveredMetrics);
-			HPCToPETranslation.add(HPCToolkitIndex, discoveredMetrics);
+			HPCToPETranslation.put(HPCToolkitIndex, discoveredMetrics);
 
 			log.debug("Registered new metric " + metricName + " with mapping: " + HPCToolkitIndex + " -> " + discoveredMetrics);
 			discoveredMetrics++;

@@ -42,7 +42,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 	boolean inCallSite = false;
 	boolean aggregateOnly = false;
 	boolean aggregateRecorded = false;
-	
+
 	int metrics = 0;
 	Properties LCPIConfig;
 	double threshold = 0.1;
@@ -50,17 +50,18 @@ public class HPCToolkitXMLParser extends DefaultHandler
 	HPCToolkitProfile profile;
 	String loadedModule = null;
 
+	String threadRegex = "([\\d]+)";
 	Stack<String> procedureStack = new Stack<String>();
-	
+
 	// Arbitrarily  selected default initial capacity of 50
 	List<HPCToolkitProfile> profileList = new ArrayList<HPCToolkitProfile>(50);
 	HPCToolkitProfileConstants profileConstants = new HPCToolkitProfileConstants();
-	
+
 	public void setThreshold(double threshold)
 	{
 		this.threshold = threshold;
 	}
-	
+
 	public void setLCPIConfig(Properties LCPIConfig)
 	{
 		this.LCPIConfig = LCPIConfig;
@@ -70,7 +71,12 @@ public class HPCToolkitXMLParser extends DefaultHandler
 	{
 		this.aggregateOnly = aggregateOnly;
 	}
-	
+
+	public void setThreadRegex(String threadRegex)
+	{
+		this.threadRegex = threadRegex;
+	}
+
 	@Override
 	public void startDocument()
 	{
@@ -97,7 +103,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 
 			int lineNumber = Integer.parseInt(attr.getValue("l"));
 			String procedureName = attr.getValue("n");
-			
+
 			procedureStack.push(procedureName);
 			String codeSection = formatCodeSection(lineNumber, true);
 
@@ -128,7 +134,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 			profileList.add(profile);
 			return;
 		}
-		
+
 		// If it a metric itself, record code section and add to Profile values
 		if (qName.equals("M"))
 		{
@@ -144,7 +150,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 
 			int index = Integer.parseInt(attr.getValue("n"));
 			double value = Double.parseDouble(attr.getValue("v"));
-	
+
 			// Check if this is aggregated program information
 			if (aggregateRecorded == false && profile == null)
 			{
@@ -153,7 +159,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 				profile = new HPCToolkitProfile(profileConstants);
 				profile.setCodeSectionInfo("Aggregate");
 				profileList.add(profile);
-	
+
 				aggregateRecorded = true;
 			}
 
@@ -200,11 +206,11 @@ public class HPCToolkitXMLParser extends DefaultHandler
 			setAggregateCyclesFromRootProfile();
 
 			if (aggregateOnly)	throw new XMLParsingDoneException();
-			
+
 			log.debug("Not processing \"S\" element");
 			return;
 		}
-		
+
 		// If it is a C (callsite), ignore till we see an ending C element
 		if (qName.equals("C"))
 		{
@@ -216,37 +222,57 @@ public class HPCToolkitXMLParser extends DefaultHandler
 
 			log.debug("Found a \"C\" element, skipping till corresponding ending element is found");
 			inCallSite = true;
-			
+
 			return;
 		}
-		
+
 		// If it is an entry from the metric table, record the name and the index
 		if (qName.equals("Metric"))
 		{
 			String metricName = attr.getValue("n");
+			int HPCToolkitIndex = Integer.parseInt(attr.getValue("i"));
 
-			String regex = "^(|\\d+\\.)([\\w:]+)(|\\.\\[[^\\]]*\\])(|\\.\\d+) \\((\\w)\\)$";
+			String regex = "^(|\\d+\\.)([\\w:]+)(|\\.\\[[\\d]+]*\\])(|\\.\\d+) \\((\\w)\\)$";
 			Pattern p = Pattern.compile(regex);
 			Matcher m = p.matcher(metricName);
-			
+
+			// First-level match, to find if we have a valid metric string
 			if (m.find())
 			{
-				int HPCToolkitIndex = Integer.parseInt(attr.getValue("i"));
-				String revisedMetricName = m.group(2) + (m.group(5).equals("I") ? "_I" : "");
+				regex = "^(|\\d+\\.)([\\w:]+)(|\\.\\[" + this.threadRegex + "]*\\])(|\\.\\d+) \\((\\w)\\)$";
+				p = Pattern.compile(regex);
+				m = p.matcher(metricName);
 
-				profileConstants.registerMetric(HPCToolkitIndex, revisedMetricName);
+				// Second level match, to extract metrics for specific threads only
+				if (m.find())
+				{
+					String revisedMetricName = m.group(2) + (m.group(6).equals("I") ? "_I" : "");
+					profileConstants.registerMetric(HPCToolkitIndex, revisedMetricName);
+				}
+				else
+					; // Ignore
 			}
 			else
 				log.debug("Encountered \"Metric\" element that did not match the regex: " + regex + "\n"
 						+ "Attribute list: " + attr);
-			
+
 			return;
 		}
 	}
-	
+
 	@Override
-	public void endElement(String uri, String localName, String qName)
+	public void endElement(String uri, String localName, String qName) throws XMLParsingDoneException
 	{
+		// If we finished parsing the metric table, check if we have non-zero metrics recorded
+		if (qName.equals("MetricTable"))
+		{
+			if (profileConstants.getPerfCounterTranslation().isEmpty())
+			{
+				log.error ("PerfExpert did not record any metrics. If '--thread' or '-t' option was passed to PerfExpert, was it correct?");
+				throw new XMLParsingDoneException();
+			}
+		}
+
 		// If it is a closing file element, reset the filename
 		if(qName.equals("F"))
 		{
@@ -289,16 +315,16 @@ public class HPCToolkitXMLParser extends DefaultHandler
 			return;
 		}
 	}
-	
+
 	@Override
 	public void endDocument()
 	{
 		// If there was only one useful metric in the input script, we would surely not have set the aggregate cycles,
 		// which are used for calculation of importance, hence an additional call
-		
+
 		setAggregateCyclesFromRootProfile();
 	}
-	
+
 	void setAggregateCyclesFromRootProfile()
 	{
 		if (profileList.size() == 0)
@@ -311,7 +337,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		{
 			// Adjust the aggregate cycles and recalculate importance of root profile (aggregate), which will be 1.0
 			profileConstants.setAggregateCycles((long) profileList.get(0).getMetricBasedOnPEIndex(profileConstants.getIndexOfCycles()));
-			
+
 			HPCToolkitProfile rootProfile = profileList.get(0);
 			rootProfile.setImportance(1.0);
 		}
@@ -320,13 +346,13 @@ public class HPCToolkitXMLParser extends DefaultHandler
 		// If not, chuck it out
 		int lastIndex = profileList.size()-1;
 		HPCToolkitProfile lastProfile = profileList.get(lastIndex);
-		
+
 		if (lastProfile.getImportance() == -1)
 		{
 			// Skip this one for now because its importance has not yet been calculated
 			return;
 		}
-		
+
 		if (lastProfile.getImportance() < threshold)
 		{
 			log.debug("Removing profile \"" + lastProfile.getCodeSectionInfo() + "\" because its importance is " + lastProfile.getImportance() + " and threshold is " + threshold);
@@ -341,17 +367,17 @@ public class HPCToolkitXMLParser extends DefaultHandler
 
 		String location;
 		String shortModuleName = loadedModule.substring(loadedModule.lastIndexOf('/')+1);
-		String procedureName = procedureStack.isEmpty() ? null : procedureStack.peek();		
+		String procedureName = procedureStack.isEmpty() ? null : procedureStack.peek();
 
 		if (lineNumber == 0 && procedureName == null && (filename == null || filename.equals("~unknown-file~"))) 
 			location = "~unknown-location~";
 		else if (filename != null && !filename.equals("~unknown-file~") && lineNumber != 0)
 			location = (newProcedure == false ? (procedureName != null ? " in function " + procedureName + (procedureName.contains("(") ? "" : "()") : "") : "") + " at " + filename + ":" + lineNumber;
 		else location = (lineNumber != 0) ? " line " + lineNumber : "" + (newProcedure == false ? (procedureName != null ? " in function " + procedureName + (procedureName.contains("(") ? "" : "()") : "") : "") + (filename != null && !filename.equals("~unknown-file~") ? " in file \"" + filename + "\"" : "");
-		
+
 		return location; // + " in " + shortModuleName;
 	}
-	
+
 	String formatFilename(String filename, int lineNumber)
 	{
 		if (lineNumber == 0 && isFilenameEmpty(filename))
@@ -361,20 +387,20 @@ public class HPCToolkitXMLParser extends DefaultHandler
 
 		return isFilenameEmpty(filename) ? formatLineNumber(lineNumber) : "in " + filename;  
 	}
-	
+
 	String formatFunctionName(String functionName)
-	{		
+	{
 		return "in function " + functionName + (functionName.contains("inlined") ? "" : "()");
 	}
-	
+
 	String formatLineNumber(int lineNumber)
 	{
 		if (lineNumber != 0)
 			return "at line " + lineNumber;
-		
+
 		return null;
 	}
-	
+
 	boolean isFilenameEmpty(String filename)
 	{
 		return filename == null || filename.equals("~unknown-file~");

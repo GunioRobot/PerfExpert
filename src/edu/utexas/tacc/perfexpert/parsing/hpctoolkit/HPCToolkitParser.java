@@ -60,7 +60,7 @@ public class HPCToolkitParser extends AParser
 		return profiles;
 	}
 
-	public List<HPCToolkitProfile> parse(boolean aggregateOnly)
+	public List<HPCToolkitProfile> parse(boolean aggregateOnly, String regex)
 	{
 		if (profiles != null && profiles.size() != 0)
 		{
@@ -123,7 +123,7 @@ public class HPCToolkitParser extends AParser
 			
 			// Get the big wheels turning...
 			// Parse the XML now and load profiles
-			process(convertedFilename, aggregateOnly);
+			process(convertedFilename, aggregateOnly, regex);
 			
 			// Sort profiles in descending order by importance, ignore (0) because it contains the root (aggregate) profile
 			// Collections.sort(profiles);
@@ -147,12 +147,13 @@ public class HPCToolkitParser extends AParser
 		return profiles;
 	}
 
-	void doXMLParsing(String filename, boolean aggregateOnly)
+	void doXMLParsing(String filename, boolean aggregateOnly, String regex)
 	{
 		HPCToolkitXMLParser xmlParser = new HPCToolkitXMLParser();
 		xmlParser.setThreshold(threshold);
 		xmlParser.setLCPIConfig(LCPIConfig);
 		xmlParser.setIfAggregateOnly(aggregateOnly);
+		xmlParser.setThreadRegex(regex);
 
 		SAXParserFactory parserFactory = SAXParserFactory.newInstance();
 
@@ -183,11 +184,11 @@ public class HPCToolkitParser extends AParser
 		log.debug("Recorded " + profiles.size() + " profiles");
 	}
 	
-	void process(String filename, boolean aggregateOnly)
+	void process(String filename, boolean aggregateOnly, String regex)
 	{
 		// Fire up the XML parser and get the list of collected profiles
 		// Profiles are saved from within the method.. Bad design? Likely!
-		doXMLParsing(filename, aggregateOnly);
+		doXMLParsing(filename, aggregateOnly, regex);
 		
 		if (profiles.size() == 0)
 		{

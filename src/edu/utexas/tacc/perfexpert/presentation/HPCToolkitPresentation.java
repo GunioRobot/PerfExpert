@@ -45,7 +45,7 @@ public class HPCToolkitPresentation
 
 		if (profiles01 == null || profiles01.size() == 0)
 		{
-			log.error("Received empty profiles as input, terminating...");
+			// log.error("Received empty profiles as input, terminating...");
 			return;
 		}
 

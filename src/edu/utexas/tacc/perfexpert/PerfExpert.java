@@ -31,10 +31,12 @@ import org.apache.log4j.Logger;
 import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.Switch;
 import com.martiansoftware.jsap.JSAPResult;
+import com.martiansoftware.jsap.FlaggedOption;
 import com.martiansoftware.jsap.UnflaggedOption;
 import com.martiansoftware.jsap.stringparsers.DoubleStringParser;
 import com.martiansoftware.jsap.stringparsers.StringStringParser;
 
+import edu.utexas.tacc.perfexpert.misc.RangeParser;
 import edu.utexas.tacc.perfexpert.configuration.LCPIConfigManager;
 import edu.utexas.tacc.perfexpert.configuration.MachineConfigManager;
 import edu.utexas.tacc.perfexpert.configuration.PerfExpertConfigManager;
@@ -74,6 +76,7 @@ public class PerfExpert
 		Switch helpSwitch = new Switch("help", 'h', "help", "Show this help screen");
 		Switch aggregateSwitch = new Switch("aggregate", 'a', "aggregate", "Show whole-program information only, no function- or loop-level information");
 
+		FlaggedOption threadParam = new FlaggedOption("threads", StringStringParser.getParser(), null, false, 't', "threads");
 		UnflaggedOption thresholdParam = new UnflaggedOption("threshold", DoubleStringParser.getParser(), true, "Threshold between 0 and 1");
 		UnflaggedOption xml1 = new UnflaggedOption("experiment1.xml", StringStringParser.getParser(), true, "experiment.xml file generated using `perfexpert_run_exp'");
 		UnflaggedOption xml2 = new UnflaggedOption("experiment2.xml", StringStringParser.getParser(), false, "second experiment.xml file, for comparison only");
@@ -83,6 +86,7 @@ public class PerfExpert
 
 		parser.registerParameter(helpSwitch);
 		parser.registerParameter(aggregateSwitch);
+		parser.registerParameter(threadParam);
 		parser.registerParameter(thresholdParam);
 		parser.registerParameter(xml1);
 		parser.registerParameter(xml2);
@@ -96,6 +100,7 @@ public class PerfExpert
 		}
 
 		boolean aggregateOnly = result.getBoolean("aggregate");
+		String threads = result.getString("threads");
 		Double threshold = result.getDouble("threshold");
 		String filename01 = result.getString("experiment1.xml");
 		String filename02 = result.getString("experiment2.xml");
@@ -112,20 +117,21 @@ public class PerfExpert
 		LCPIConfigManager lcpiConfig = new LCPIConfigManager("file://" + PERFEXPERT_HOME + "/config/lcpi.properties");
 		if (lcpiConfig.readConfigSource() == false)		// Error while reading configuraiton, handled inside method
 			return;
-		
+
 		MachineConfigManager machineConfig = new MachineConfigManager("file://" + PERFEXPERT_HOME + "/config/machine.properties");
 		if (machineConfig.readConfigSource() == false)		// Error while reading configuraiton, handled inside method
 			return;
-		
-		List<HPCToolkitProfile> profiles01 = null, profiles02 = null;
 
+		String thread_regex = RangeParser.getRegexString(threads);
+
+		List<HPCToolkitProfile> profiles01 = null, profiles02 = null;
 		HPCToolkitParser parser01 = new HPCToolkitParser(HPCDATA_LOCATION, threshold, "file://" + filename01, lcpiConfig.getProperties());
-		profiles01 = parser01.parse(aggregateOnly);
+		profiles01 = parser01.parse(aggregateOnly, thread_regex);
 
 		if (filename02 != null)
 		{
 			HPCToolkitParser parser02 = new HPCToolkitParser(HPCDATA_LOCATION, 0, "file://" + filename02, lcpiConfig.getProperties());
-			profiles02 = parser02.parse(aggregateOnly);
+			profiles02 = parser02.parse(aggregateOnly, thread_regex);
 		}
 
 		HPCToolkitPresentation.presentSummaryProfiles(profiles01, profiles02, lcpiConfig, machineConfig, filename01, filename02, aggregateOnly);

@@ -105,8 +105,12 @@ public class HPCToolkitProfile extends AProfile
 
 	public void setMetric(int HPCToolkitIndex, double value)
 	{
-		int peIndex = profileConstants.HPCToPETranslation.get(HPCToolkitIndex);
-		setMetricBasedOnPEIndex(peIndex, value);
+		// Do a quick sanity check
+		if (profileConstants.HPCToPETranslation.containsKey(HPCToolkitIndex))
+		{
+			int peIndex = profileConstants.HPCToPETranslation.get(HPCToolkitIndex);
+			setMetricBasedOnPEIndex(peIndex, value);
+		}
 	}
 	
 	private void setMetricBasedOnPEIndex(int PEIndex, double value)
