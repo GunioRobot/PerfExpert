@@ -150,15 +150,14 @@ repeatIfNeg:
 		"subq	%%rax, %%rbx\n\t"
 		"movq	%%rbx, %%rax\n\t"
 
-		// Store the results
-		"movq	%%rax, %0\n\t"
-		"movq	-32(%%rbp), %1\n\t"
-
-
-		//	 Pop all the regs we used
+		// Pop all the regs we used
 		"popq	%%rdi\n\t"
 		"popq	%%rsi\n\t"
 		"popq	%%rbx\n\t"
+
+		// Store the results
+		"movq	%%rax, %0\n\t"
+		"movq	-32(%%rbp), %1\n\t"
 
 		// Restore frame
 		"addq	$40, %%rsp\n\t"
@@ -339,14 +338,14 @@ repeatIfNeg:
 		"subq	%%rax, %%rbx\n\t"
 		"movq	%%rbx, %%rax\n\t"
 
-		// Store the results
-		"movq	%%rax, %0\n\t"
-		"movq	-32(%%rbp), %1\n\t"
-
 		// Pop all the regs we used
 		"popq	%%rdi\n\t"
 		"popq	%%rsi\n\t"
 		"popq	%%rbx\n\t"
+
+		// Store the results
+		"movq	%%rax, %0\n\t"
+		"movq	-32(%%rbp), %1\n\t"
 
 		// Restore frame
 		"addq	$40, %%rsp\n\t"
@@ -368,7 +367,7 @@ repeatIfNeg:
 
 double getFPLatency()
 {
-	int diff, count;
+	size_t diff, count;
 	float op1 = 1424.4525;
 	float op2 = 0.5636;
 
@@ -403,8 +402,7 @@ double getFPLatency()
 		"cmp	$0, %%rcx\n\t"
 		"je	fpout\n\t"
 		"fadd	16(%%rbp)\n\t"
-		"fmul	8(%%rbp)\n\t"
-		"fsub	16(%%rbp)\n\t"
+		"fsub	8(%%rbp)\n\t"
 		"decq	%%rcx\n\t"
 		"incq	%%rbx\n\t"
 		"jmp	fploop\n\t"
@@ -417,7 +415,6 @@ double getFPLatency()
 		"rdtsc\n\t"
 		"subq	-16(%%rbp), %%rax\n\t"
 		"sbb	-24(%%rbp), %%rdx\n\t"
-		"movq	-32(%%rbp), %%rbx\n\t"
 
 		// Store the result (with overhead)
 		"movq	%%rax, -40(%%rbp)\n\t"
@@ -456,14 +453,14 @@ double getFPLatency()
 		"subq	%%rax, %%rbx\n\t"
 		"movq	%%rbx, %%rax\n\t"
 
-		// Store the results
-		"movl	%%eax, %0\n\t"
-		"movl	-32(%%rbp), %1\n\t"
-
 		// Pop all the regs we used
 		"popq	%%rdi\n\t"
 		"popq	%%rsi\n\t"
 		"popq	%%rbx\n\t"
+
+		// Store the results
+		"movq	%%rax, %0\n\t"
+		"movq	-32(%%rbp), %1\n\t"
 
 		// Restore frame
 		"addq	$40, %%rsp\n\t"
@@ -476,12 +473,12 @@ double getFPLatency()
 	: "rdx"
 	);
 
-	return diff / ((float) (count * 3));
+	return diff / ((float) (count * 2));
 }
 
 double getFPSlowLatency()
 {
-	int diff, count;
+	size_t diff, count;
 	float op1 = 1424.4525;
 	float op2 = 0.5636;
 
@@ -568,14 +565,14 @@ double getFPSlowLatency()
 		"subq	%%rax, %%rbx\n\t"
 		"movq	%%rbx, %%rax\n\t"
 
-		// Store the results
-		"movl	%%eax, %0\n\t"
-		"movl	-32(%%rbp), %1\n\t"
-
 		// Pop all the regs we used
 		"popq	%%rdi\n\t"
 		"popq	%%rsi\n\t"
 		"popq	%%rbx\n\t"
+
+		// Store the results
+		"movq	%%rax, %0\n\t"
+		"movq	-32(%%rbp), %1\n\t"
 
 		// Restore frame
 		"addq	$40, %%rsp\n\t"
@@ -593,7 +590,7 @@ double getFPSlowLatency()
 
 double getPredictedBranchLatency()
 {
-	int diff;
+	size_t diff;
 	__asm__ volatile(
 		// Set up the frame
 		"pushq	%%rbp\n\t"
@@ -668,13 +665,13 @@ double getPredictedBranchLatency()
 		"subq	%%rax, %%rbx\n\t"
 		"movq	%%rbx, %%rax\n\t"
 
-		// Store the results
-		"movl	%%eax, %0\n\t"
-
 		// Pop all the regs we used
 		"popq	%%rdi\n\t"
 		"popq	%%rsi\n\t"
 		"popq	%%rbx\n\t"
+
+		// Store the results
+		"movq	%%rax, %0\n\t"
 
 		// Restore frame
 		"addq	$40, %%rsp\n\t"
@@ -690,7 +687,7 @@ double getPredictedBranchLatency()
 
 double getMisPredictedBranchLatency()
 {
-	int diff;
+	size_t diff;
 	__asm__ volatile(
 		// Set up the frame
 		"pushq	%%rbp\n\t"
@@ -782,13 +779,13 @@ double getMisPredictedBranchLatency()
 		"subq	-16(%%rbp), %%rax\n\t"
 		"sbb	-24(%%rbp), %%rdx\n\t"
 
-		// Store the result
-		"movl	%%eax, %0\n\t"
-
 		// Pop all the regs we used
 		"popq	%%rdi\n\t"
 		"popq	%%rsi\n\t"
 		"popq	%%rbx\n\t"
+
+		// Store the result
+		"movq	%%rax, %0\n\t"
 
 		// Restore frame
 		"addq	$32, %%rsp\n\t"
@@ -959,14 +956,14 @@ double getTLBLatency(long size)
 		"subq	%%rax, %%rbx\n\t"
 		"movq	%%rbx, %%rax\n\t"
 
-		// Store the results
-		"movq	%%rax, %0\n\t"
-		"movq	-32(%%rbp), %1\n\t"
-
 		// Pop all the regs we used
 		"popq	%%rdi\n\t"
 		"popq	%%rsi\n\t"
 		"popq	%%rbx\n\t"
+
+		// Store the results
+		"movq	%%rax, %0\n\t"
+		"movq	-32(%%rbp), %1\n\t"
 
 		// Restore frame
 		"addq	$40, %%rsp\n\t"
