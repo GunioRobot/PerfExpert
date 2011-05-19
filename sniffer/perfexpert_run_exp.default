@@ -180,7 +180,7 @@ do
 		echo >> ${debug_file}
 		cat /proc/cpuinfo >> ${debug_file} 2>&1
 
-		echo -e "Command: ${cmd}\n" > ${debug_file}
+		echo -e "Command: ${cmd}\n" >> ${debug_file}
 		echo -e "run\nbt\nthread apply all bt\nquit" > ${tempDir}/stacktraces.cmd
 
 		echo "PerfExpert: Collecting stack trace..."
