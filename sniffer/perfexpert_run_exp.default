@@ -169,7 +169,7 @@ do
 	if [ ${?} != "0" ]
 	then
 		echo
-		echo "PerfExpert: Looks like the previous command failed to finish properly, switching to debug mode..."
+		echo "PerfExpert: Looks like the previous command failed to terminate cleanly, switching to debug mode..."
 
 		rm -f ${debug_file}
 
@@ -187,7 +187,13 @@ do
 		dbg_cmd="gdb --command=${tempDir}/stacktraces.cmd --args /bin/sh ${cmd} >> ${debug_file} 2>&1"
 		eval ${dbg_cmd}
 
-		echo "PerfExpert: Stack traces collected in ./${debug_file}, please send this file to the PerfExpert group for review. Thanks!"
+		echo "PerfExpert: Collecting debug information from hpcrun monitor..."
+		dbg_cmd="${HPCTOOLKIT_BIN}/hpcrun --monitor-debug ${experiment[${index}]} --output ${tempDir}/measurements ${program_name} ${arguments} >> ${debug_file} 2>&1"
+		echo -e "\nCommand: ${dbg_cmd}\n" >> ${debug_file}
+		eval ${dbg_cmd}
+
+		echo
+		echo "PerfExpert: Debug information collected in ./${debug_file}, please send this file to the PerfExpert group for review. Thanks!"
 
 		# Clean up
 		rm -rf core ${tempDir}
