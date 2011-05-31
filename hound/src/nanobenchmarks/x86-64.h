@@ -1,6 +1,6 @@
 
-#ifndef GENERIC_H_
-#define GENERIC_H_
+#ifndef X86_64_H
+#define X86_64_H
 
 #include <time.h>
 #include <errno.h>
@@ -981,4 +981,4 @@ double getTLBLatency(long size)
 }
 
 
-#endif /* GENERIC_H_ */
+#endif /* X86_64_H */

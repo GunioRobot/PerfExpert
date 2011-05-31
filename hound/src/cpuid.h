@@ -1,3 +1,7 @@
+
+#ifndef CPUID_H_
+#define CPUID_H_
+
 /****************************************************************************
 This file is part of Hound.
 
@@ -31,6 +35,7 @@ typedef struct
 #define bool int   
 
 enum { EAX=0, EBX, ECX, EDX };
+enum { PROC_UNKNOWN=-1, PROC_INTEL=0, PROC_AMD };
 
 #ifdef __GNUC__
 void mycpuid( int * p, unsigned int param, unsigned int ecx )
@@ -138,3 +143,33 @@ int isCPUIDSupported()
         	return supported != 0;
 	#endif
 }
+
+void getProcessorName(char* string)
+{
+	int info[4];
+	__cpuid(info, 0, 0);
+	char processorName [13] = {0};
+
+	int charCounter = 0;
+
+	// Remember that register sequence is EBX, EDX and ECX
+	processorName[charCounter++] = info[EBX] & 0xff;
+	processorName[charCounter++] = (info[EBX] & 0xff00) >> 8;
+	processorName[charCounter++] = (info[EBX] & 0xff0000) >> 16;
+	processorName[charCounter++] = (info[EBX] & 0xff000000) >> 24;
+
+	processorName[charCounter++] = info[EDX] & 0xff;
+	processorName[charCounter++] = (info[EDX] & 0xff00) >> 8;
+	processorName[charCounter++] = (info[EDX] & 0xff0000) >> 16;
+	processorName[charCounter++] = (info[EDX] & 0xff000000) >> 24;
+
+	processorName[charCounter++] = info[ECX] & 0xff;
+	processorName[charCounter++] = (info[ECX] & 0xff00) >> 8;
+	processorName[charCounter++] = (info[ECX] & 0xff0000) >> 16;
+	processorName[charCounter++] = (info[ECX] & 0xff000000) >> 24;
+
+	// 13th character in processorName is already a NULL, so not inserting it explicitly
+	strcpy (string, processorName);
+}
+
+#endif /* CPUID_H_ */

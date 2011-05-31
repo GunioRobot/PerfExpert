@@ -34,37 +34,8 @@ along with Hound.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 #define	COLLECTION_SIZE	50
-enum { PROC_UNKNOWN=-1, PROC_INTEL=0, PROC_AMD };
 
 char processor = PROC_UNKNOWN;
-
-void getProcessorName(char* string)
-{
-	int info[4];
-	__cpuid(info, 0, 0);
-	char processorName [13] = {0};
-
-	int charCounter = 0;
-
-	// Remember that register sequence is EBX, EDX and ECX
-	processorName[charCounter++] = info[EBX] & 0xff;
-	processorName[charCounter++] = (info[EBX] & 0xff00) >> 8;
-	processorName[charCounter++] = (info[EBX] & 0xff0000) >> 16;
-	processorName[charCounter++] = (info[EBX] & 0xff000000) >> 24;
-
-	processorName[charCounter++] = info[EDX] & 0xff;
-	processorName[charCounter++] = (info[EDX] & 0xff00) >> 8;
-	processorName[charCounter++] = (info[EDX] & 0xff0000) >> 16;
-	processorName[charCounter++] = (info[EDX] & 0xff000000) >> 24;
-
-	processorName[charCounter++] = info[ECX] & 0xff;
-	processorName[charCounter++] = (info[ECX] & 0xff00) >> 8;
-	processorName[charCounter++] = (info[ECX] & 0xff0000) >> 16;
-	processorName[charCounter++] = (info[ECX] & 0xff000000) >> 24;
-
-	// 13th character in processorName is already a NULL, so not inserting it explicitly
-	strcpy (string, processorName);
-}
 
 double get90thPercentile(volatile double* lpCycles, unsigned int count)
 {
