@@ -27,22 +27,16 @@ fi
 # For making this work while building RPMs
 PERFEXPERT_HOME="${RPM_BUILD_ROOT}${PERFEXPERT_HOME}"
 
-# If path does not exist, create it
-if [ ! -d "${PERFEXPERT_HOME}" ]
-then
-	mkdir -p "${PERFEXPERT_HOME}"
-	if [ ${?} != 0 ]
-	then
-		echo "Failed creating directory: \"${PERFEXPERT_HOME}\", exiting..."
-		exit 1
-	fi
-fi
-
 # Empty out the existing contents
 trimmed=`echo ${PERFEXPERT_HOME} | sed 's/ //g' | sed 's/\///g'`
 if [ "x${trimmed}" != "x" ]
 then
-	rm -rf "${PERFEXPERT_HOME}/"
+	rm -f "${PERFEXPERT_HOME}/perfexpert_run_exp"
+	rm -f "${PERFEXPERT_HOME}/config/machine.properties"
+	rm -f "${PERFEXPERT_HOME}/config/lcpi.properties"
+	rm -f "${PERFEXPERT_HOME}/bin/perfexpert.jar"
+	rm -f "${PERFEXPERT_HOME}/perfexpert"
+
 	mkdir "${PERFEXPERT_HOME}"
 else
 	echo "\${PERFEXPERT_HOME} was not set or was set to an invalid path..."
