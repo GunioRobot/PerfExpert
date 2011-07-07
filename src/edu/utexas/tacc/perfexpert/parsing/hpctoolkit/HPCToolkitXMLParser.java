@@ -50,7 +50,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 	HPCToolkitProfile profile;
 	String loadedModule = null;
 
-	String threadRegex = "([\\d]+)";
+	String threadRegex = "(\\d+,)?([\\d]+)";
 	Stack<String> procedureStack = new Stack<String>();
 
 	// Arbitrarily  selected default initial capacity of 50
@@ -232,14 +232,14 @@ public class HPCToolkitXMLParser extends DefaultHandler
 			String metricName = attr.getValue("n");
 			int HPCToolkitIndex = Integer.parseInt(attr.getValue("i"));
 
-			String regex = "^(|\\d+\\.)([\\w:]+)(|\\.\\[[\\d]+]*\\])(|\\.\\d+) \\((\\w)\\)$";
+			String regex = "^(|\\d+\\.)([\\w:]+)\\.\\[(\\d+,)?(\\d+)\\](|\\.\\d+) \\((\\w)\\)$";
 			Pattern p = Pattern.compile(regex);
 			Matcher m = p.matcher(metricName);
 
 			// First-level match, to find if we have a valid metric string
 			if (m.find())
 			{
-				regex = "^(|\\d+\\.)([\\w:]+)(|\\.\\[" + this.threadRegex + "]*\\])(|\\.\\d+) \\((\\w)\\)$";
+				regex = "^(|\\d+\\.)([\\w:]+)\\.\\[" + this.threadRegex + "\\](|\\.\\d+) \\((\\w)\\)$";
 				p = Pattern.compile(regex);
 				m = p.matcher(metricName);
 
@@ -254,7 +254,7 @@ public class HPCToolkitXMLParser extends DefaultHandler
 			}
 			else
 				log.debug("Encountered \"Metric\" element that did not match the regex: " + regex + "\n"
-						+ "Attribute list: " + attr);
+						+ "Attribute list: " + metricName);
 
 			return;
 		}

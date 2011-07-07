@@ -44,9 +44,9 @@ public class RangeParser
 	public static String getRegexString(String pattern)
 	{
 		if (pattern == null || pattern.length() == 0)
-			return "([\\d]+)";
+			return "(\\d+,)?([\\d]+)";
 
-		StringBuilder regex = new StringBuilder("(");
+		StringBuilder regex = new StringBuilder("(\\d+,)?(");
 		String[] parts = pattern.toLowerCase().split(",",-1);
 		int min = Integer.MAX_VALUE, max = 0;
 
