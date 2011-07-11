@@ -34,11 +34,13 @@ public interface MathParserConstants {
   /** RegularExpression Id. */
   int NUMBER = 5;
   /** RegularExpression Id. */
-  int DIGIT = 6;
+  int SIMPLENUMBER = 6;
   /** RegularExpression Id. */
-  int LETTER = 7;
+  int DIGIT = 7;
   /** RegularExpression Id. */
-  int SYMBOL = 8;
+  int LETTER = 8;
+  /** RegularExpression Id. */
+  int SYMBOL = 9;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -51,6 +53,7 @@ public interface MathParserConstants {
     "\"\\t\"",
     "\"\\n\"",
     "<NUMBER>",
+    "<SIMPLENUMBER>",
     "<DIGIT>",
     "<LETTER>",
     "<SYMBOL>",

@@ -107,11 +107,11 @@ public class MathParser implements MathParserConstants {
         break label_1;
       }
       if (jj_2_4(2)) {
-        jj_consume_token(9);
+        jj_consume_token(10);
         b = expr(profile, machineConfig);
                                                           a += b;
       } else if (jj_2_5(2)) {
-        jj_consume_token(10);
+        jj_consume_token(11);
         b = expr(profile, machineConfig);
                                                           a -= b;
       } else {
@@ -135,11 +135,11 @@ public class MathParser implements MathParserConstants {
         break label_2;
       }
       if (jj_2_7(2)) {
-        jj_consume_token(11);
+        jj_consume_token(12);
         b = term(profile, machineConfig);
                                                           a *= b;
       } else if (jj_2_8(2)) {
-        jj_consume_token(12);
+        jj_consume_token(13);
         b = term(profile, machineConfig);
                                                           if (b != 0) a /= b;
       } else {
@@ -154,7 +154,7 @@ public class MathParser implements MathParserConstants {
   static final public double unary(HPCToolkitProfile profile, Properties machineConfig) throws ParseException {
         double a;
     if (jj_2_9(2)) {
-      jj_consume_token(10);
+      jj_consume_token(11);
       a = element(profile, machineConfig);
                                                           {if (true) return -a;}
     } else if (jj_2_10(2)) {
@@ -177,9 +177,9 @@ public class MathParser implements MathParserConstants {
       t = jj_consume_token(SYMBOL);
                                   {if (true) return getSymbolValue(t.toString(), profile, machineConfig);}
     } else if (jj_2_13(2)) {
-      jj_consume_token(13);
-      a = expr(profile, machineConfig);
       jj_consume_token(14);
+      a = expr(profile, machineConfig);
+      jj_consume_token(15);
                                                   {if (true) return a;}
     } else {
       jj_consume_token(-1);
@@ -279,11 +279,6 @@ public class MathParser implements MathParserConstants {
     finally { jj_save(12, xla); }
   }
 
-  static private boolean jj_3_12() {
-    if (jj_scan_token(SYMBOL)) return true;
-    return false;
-  }
-
   static private boolean jj_3R_5() {
     Token xsp;
     xsp = jj_scanpos;
@@ -303,7 +298,7 @@ public class MathParser implements MathParserConstants {
   }
 
   static private boolean jj_3_5() {
-    if (jj_scan_token(10)) return true;
+    if (jj_scan_token(11)) return true;
     if (jj_3R_3()) return true;
     return false;
   }
@@ -319,7 +314,7 @@ public class MathParser implements MathParserConstants {
   }
 
   static private boolean jj_3_4() {
-    if (jj_scan_token(9)) return true;
+    if (jj_scan_token(10)) return true;
     if (jj_3R_3()) return true;
     return false;
   }
@@ -340,13 +335,13 @@ public class MathParser implements MathParserConstants {
   }
 
   static private boolean jj_3_9() {
-    if (jj_scan_token(10)) return true;
+    if (jj_scan_token(11)) return true;
     if (jj_3R_5()) return true;
     return false;
   }
 
   static private boolean jj_3_8() {
-    if (jj_scan_token(12)) return true;
+    if (jj_scan_token(13)) return true;
     if (jj_3R_4()) return true;
     return false;
   }
@@ -372,7 +367,7 @@ public class MathParser implements MathParserConstants {
   }
 
   static private boolean jj_3_7() {
-    if (jj_scan_token(11)) return true;
+    if (jj_scan_token(12)) return true;
     if (jj_3R_4()) return true;
     return false;
   }
@@ -399,8 +394,13 @@ public class MathParser implements MathParserConstants {
   }
 
   static private boolean jj_3_13() {
-    if (jj_scan_token(13)) return true;
+    if (jj_scan_token(14)) return true;
     if (jj_3R_3()) return true;
+    return false;
+  }
+
+  static private boolean jj_3_12() {
+    if (jj_scan_token(SYMBOL)) return true;
     return false;
   }
 
@@ -629,7 +629,7 @@ public class MathParser implements MathParserConstants {
   /** Generate ParseException. */
   static public ParseException generateParseException() {
     jj_expentries.clear();
-    boolean[] la1tokens = new boolean[15];
+    boolean[] la1tokens = new boolean[16];
     if (jj_kind >= 0) {
       la1tokens[jj_kind] = true;
       jj_kind = -1;
@@ -643,7 +643,7 @@ public class MathParser implements MathParserConstants {
         }
       }
     }
-    for (int i = 0; i < 15; i++) {
+    for (int i = 0; i < 16; i++) {
       if (la1tokens[i]) {
         jj_expentry = new int[1];
         jj_expentry[0] = i;

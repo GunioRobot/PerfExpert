@@ -94,7 +94,8 @@ SKIP :
 }
 TOKEN:
 {
-	< NUMBER: (<DIGIT>)+ ( "." (<DIGIT>)+ )? >
+	< NUMBER: <SIMPLENUMBER> ("e" (<DIGIT>)+)? >
+|	< SIMPLENUMBER: (<DIGIT>)+ ( "." (<DIGIT>)+ )? >
 |	< DIGIT: ["0"-"9"] >
 |	< LETTER: ["A"-"Z"]|["a"-"z"] >
 |	< SYMBOL: ("_"|":"|<LETTER>|<DIGIT>)+ >
