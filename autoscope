@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+PERFEXPERT_HOME=`dirname ${0}`;
+
+# Check if the jar file exists
+if [ -f ${PERFEXPERT_HOME}/bin/perfexpert.jar ]
+then
+	java -Dlog4j.configuration=file:${PERFEXPERT_HOME}/lib/log4j.properties -cp ${PERFEXPERT_HOME}/bin/perfexpert.jar:${PERFEXPERT_HOME}/lib/JSAP-2.1.jar:${PERFEXPERT_HOME}/lib/log4j-1.2.16.jar:${PERFEXPERT_HOME}/lib/jsoup-1.6.1.jar edu.utexas.tacc.perfexpert.autoscope.AutoSCOPE ${*};
+else
+	echo "Could not find ${PERFEXPERT_HOME}/bin/perfexpert.jar, trying to build it";
+	echo;
+
+	# Try running the build script
+	ant -f ${PERFEXPERT_HOME}/build/build.xml jar;
+	echo;
+
+	if [ ${?} != "0" ]
+	then
+		echo "Build failed. Please correct build problems or place a compiled perfexpert.jar in ${PERFEXPERT_HOME}/bin and try again";
+		exit 1;
+	else
+		echo "Starting PerfExpert...";
+		java -Dlog4j.configuration=file:${PERFEXPERT_HOME}/lib/log4j.properties -cp ${PERFEXPERT_HOME}/bin/perfexpert.jar:${PERFEXPERT_HOME}/lib/JSAP-2.1.jar:${PERFEXPERT_HOME}/lib/log4j-1.2.16.jar:${PERFEXPERT_HOME}/lib/jsoup-1.6.1.jar edu.utexas.tacc.perfexpert.autoscope.AutoSCOPE ${*};
+	fi
+fi
