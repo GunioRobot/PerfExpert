@@ -149,21 +149,33 @@ public class HPCToolkitPresentation
 			if (cpi <= dCPIThreshold)
 				System.out.println("The performance of this code section is good");
 
-			boolean printRatioHeader = false, printPerfHeader = false;
+			boolean printRatioHeader = false, printPerfHeader = false, printPercentHeader = false;
 			// Compute each LCPI metric
 			for (String LCPI : lcpiConfig.getLCPINames())
 			{
-				String category, subcategory;
+				String category, subcategory, subsubcategory;
 				int indexOfPeriod = LCPI.indexOf(".");
+				int indexOfPeriod2 = LCPI.indexOf(".", indexOfPeriod+1);	// If there is a second '.'
 				if (indexOfPeriod < 0)
 				{
 					category = "overall";
 					subcategory = LCPI;
+					subsubcategory = null;
 				}
 				else
 				{
 					category = LCPI.substring(0, indexOfPeriod);
-					subcategory = LCPI.substring(indexOfPeriod+1);
+
+					if (indexOfPeriod2 < 0)
+					{
+						subcategory = LCPI.substring(indexOfPeriod+1);
+						subsubcategory = null;
+					}
+					else
+					{
+						subcategory = LCPI.substring(indexOfPeriod+1, indexOfPeriod2);
+						subsubcategory = LCPI.substring(indexOfPeriod2+1);
+					}
 				}
 
 				String formula = lcpiConfig.getProperties().getProperty(LCPI);
@@ -180,7 +192,7 @@ public class HPCToolkitPresentation
 				}
 
 				profile.setLCPI(index, result01);
-				log.debug(profile.getCodeSectionInfo() + ": " + category + "." + subcategory + " = " + result01);
+				log.debug(profile.getCodeSectionInfo() + ": " + category + "." + subcategory + "." + subsubcategory + " = " + result01);
 
 				double result02 = result01;
 				if (matchingProfile != null)
@@ -210,6 +222,22 @@ public class HPCToolkitPresentation
 						System.out.println (String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s    %%  0.........25...........50.........75........100", "ratio to total instrns"));
 						printRatioHeader = true;
 					}
+				}
+				else if (category.regionMatches(true, 0, "percent", 0, category.length()))
+				{
+					metricType = Metric.METRIC_RATIO;
+					if (printPercentHeader == false)
+					{
+						System.out.print("\n");
+						printPercentHeader = true;
+					}
+
+					// Shift them around
+					category = subcategory;
+					subcategory = subsubcategory;
+
+					fCategory = category.replaceAll("_", " ");
+					fSubcategory = subcategory.replaceAll("_", " ");
 				}
 				else
 				{
