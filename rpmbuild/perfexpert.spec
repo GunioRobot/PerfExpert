@@ -1,11 +1,11 @@
 #
-# perfexpert-2.0.3.spec, v3.0, 2011-02-24 11:59:00 carlos@tacc.utexas.edu
+# perfexpert-2.0.6.spec, v3.0, 2011-02-24 11:59:00 carlos@tacc.utexas.edu
 #
 # See http://www.tacc.utexas.edu/perfexpert/
 
 Summary:    Performance Bottleneck Remediation Tool
 Name:       perfexpert
-Version:    2.0.3
+Version:    2.0.6
 Release:    1
 License:    LGPLv3
 Vendor:     The University of Texas at Austin
@@ -95,13 +95,13 @@ module load gcc jdk64 papi
 #
 # HPCTOOLKIT MUST BE BUILT FOR PERFEXPERT
 #
-cd ./extras/hpctoolkit-externals-r3397
+cd ./extras/hpctoolkit-externals-r3572
 ./configure
 make all
 make distclean
 
-cd ../hpctoolkit-r3397
-./configure --prefix=%{HPCTOOLKIT_INSTALL_DIR} --with-externals=../hpctoolkit-externals-r3397 --with-papi=$TACC_PAPI_DIR
+cd ../hpctoolkit-r3572
+./configure --prefix=%{HPCTOOLKIT_INSTALL_DIR} --with-externals=../hpctoolkit-externals-r3572 --with-papi=$TACC_PAPI_DIR
 make
 
 #------------------------------------------------
@@ -130,7 +130,7 @@ module load gcc jdk64 papi
 
 # Install the hpctoolkit build and get back to the original 
 # directory
- cd ./extras/hpctoolkit-r3397
+ cd ./extras/hpctoolkit-r3572
  make install
  cd ../../
 
