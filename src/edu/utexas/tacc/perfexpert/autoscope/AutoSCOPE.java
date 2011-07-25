@@ -157,11 +157,11 @@ public class AutoSCOPE
 				else
 				{
 					if (rowContents.child(0).attr("style").contains("color:#000000"))	// description
-						System.out.println("*" + text);
+						System.out.println("* " + text);
 					else if (rowContents.child(0).attr("style").contains("color:#FF5B5B"))	// code example
-						System.out.println("  - example:" + text);
+						System.out.println("  - example: " + text);
 					else if (rowContents.child(0).attr("style").contains("color:#00B050"))	// description
-						System.out.println("  - compiler flag:" + text);
+						System.out.println("  - compiler flag: " + text);
 				}
 			}
 		}
@@ -171,6 +171,9 @@ public class AutoSCOPE
 	{
 		if (documentText == null || documentText.length() == 0)
 			throw new HTMLParseException("Document text empty");
+
+		// Replace all &nbsp; occurences
+		documentText = documentText.replace("&nbsp;", " ");
 
 		// Get the main table
 		Document doc = Jsoup.parse(documentText);
