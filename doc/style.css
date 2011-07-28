@@ -1,0 +1,11 @@
+html,body{height:100%;color:black}
+body{background-color:white;font:13.34px helvetica,arial,freesans,clean,sans-serif;*font-size:small;}
+pre{font:13.34px Monaco,"Courier New","DejaVu Sans Mono","Bitstream Vera Sans Mono",monospace;background-color:#EEE;border:1px solid #BBB;padding:10px}
+code{font:13.34px Monaco,"Courier New","DejaVu Sans Mono","Bitstream Vera Sans Mono",monospace;background-color:#EEE}
+body *{line-height:1.4em;}
+p{margin:1em 0;}
+a{color:#4183c4;text-decoration:none;}
+a:hover{text-decoration:underline;}
+a.danger{color:#c00;}
+a.action{color:#d00;text-decoration:underline;}
+h2,h3,h4{margin-top:30px}
