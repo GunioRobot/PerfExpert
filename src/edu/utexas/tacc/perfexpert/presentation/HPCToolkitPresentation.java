@@ -30,7 +30,6 @@ import org.apache.log4j.Logger;
 import edu.utexas.tacc.perfexpert.configuration.LCPIConfigManager;
 import edu.utexas.tacc.perfexpert.configuration.MachineConfigManager;
 import edu.utexas.tacc.perfexpert.configuration.hpctoolkit.mathparser.MathParser;
-import edu.utexas.tacc.perfexpert.configuration.hpctoolkit.mathparser.ParseException;
 import edu.utexas.tacc.perfexpert.parsing.profiles.hpctoolkit.HPCToolkitProfile;
 import edu.utexas.tacc.perfexpert.parsing.profiles.hpctoolkit.HPCToolkitProfileConstants;
 
@@ -184,11 +183,15 @@ public class HPCToolkitPresentation
 				double result01 = 0;
 				try
 				{
-					result01 = Double.valueOf(doubleFormat.format(mathParser.parse(formula, profile, machineConfig.getProperties())));
+					result01 = doubleFormat.parse(doubleFormat.format(mathParser.parse(formula, profile, machineConfig.getProperties()))).doubleValue();
 				}
-				catch (ParseException e)
+				catch (edu.utexas.tacc.perfexpert.configuration.hpctoolkit.mathparser.ParseException e)
 				{
 					log.error("Error in parsing expression: " + formula + "\nDefaulting value of " + LCPI + " to zero.\n[" + e.getMessage() + "]\n" + e.getStackTrace());
+				}
+				catch (java.text.ParseException e2)
+				{
+					log.error("Error in parsing expression: " + formula + "\nDefaulting value of " + LCPI + " to zero.\n[" + e2.getMessage() + "]\n" + e2.getStackTrace());
 				}
 
 				profile.setLCPI(index, result01);
@@ -199,11 +202,15 @@ public class HPCToolkitPresentation
 				{
 					try
 					{
-						result02 = Double.valueOf(doubleFormat.format(mathParser.parse(formula, matchingProfile, machineConfig.getProperties())));
+						result02 = doubleFormat.parse(doubleFormat.format(mathParser.parse(formula, matchingProfile, machineConfig.getProperties()))).doubleValue();
 					}
-					catch (ParseException e)
+					catch (edu.utexas.tacc.perfexpert.configuration.hpctoolkit.mathparser.ParseException e)
 					{
 						log.error("Error in parsing expression: " + formula + "\nDefaulting value of " + LCPI + " to zero.\n[" + e.getMessage() + "]\n" + e.getStackTrace());
+					}
+					catch (java.text.ParseException e2)
+					{
+						log.error("Error in parsing expression: " + formula + "\nDefaulting value of " + LCPI + " to zero.\n[" + e2.getMessage() + "]\n" + e2.getStackTrace());
 					}
 	
 					matchingProfile.setLCPI(index, result02);

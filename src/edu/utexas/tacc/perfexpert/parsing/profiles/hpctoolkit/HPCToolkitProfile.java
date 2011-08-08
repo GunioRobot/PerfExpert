@@ -22,6 +22,7 @@
 package edu.utexas.tacc.perfexpert.parsing.profiles.hpctoolkit;
 
 import java.text.DecimalFormat;
+import java.text.ParseException;
 
 import org.apache.log4j.Logger;
 
@@ -207,6 +208,13 @@ public class HPCToolkitProfile extends AProfile
 	// To maintain consistency of results with Perl version
 	private double roundToTwoDigitsAfterDecimal(double in)
 	{
-		return Double.valueOf(doubleFormat.format(in));
+		try
+		{
+			return doubleFormat.parse(doubleFormat.format(in)).doubleValue();
+		} catch(ParseException e)
+		{
+			log.error("Failed to parse while rounding \"" + in + "\" to two digits, defaulting to zero");
+			return 0;
+		}
 	}
 }
