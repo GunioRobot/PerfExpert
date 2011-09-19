@@ -226,7 +226,7 @@ public class HPCToolkitPresentation
 					if (printRatioHeader == false)
 					{
 						// Print ratio header
-						System.out.println (String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s    %%  0.........25...........50.........75........100", "ratio to total instrns"));
+						System.out.println (String.format("%-25s    %%  0.........25...........50.........75........100", "ratio to total instrns"));
 						printRatioHeader = true;
 					}
 				}
@@ -253,7 +253,7 @@ public class HPCToolkitPresentation
 					{
 						// Print perf header
 						System.out.println("\n-------------------------------------------------------------------------------");
-						System.out.println (String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s  LCPI good......okay......fair......poor......bad....", "performance assessment"));
+						System.out.println (String.format("%-25s  LCPI good......okay......fair......poor......bad....", "performance assessment"));
 						printPerfHeader = true;
 					}
 				}
@@ -261,10 +261,10 @@ public class HPCToolkitPresentation
 				if (subcategory.regionMatches(true, 0, "overall", 0, subcategory.length()))
 				{
 					// Print the category name
-					System.out.print(String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s: ", "* " + fCategory));
+					System.out.print(String.format("%-25s: ", "* " + fCategory));
 				}
 				else
-					System.out.print(String.format("%-" + (lcpiConfig.getLargestLCPINameLength()+4) + "s: ", "   - " + fSubcategory));
+					System.out.print(String.format("%-25s: ", "   - " + fSubcategory));
 
 				if (matchingProfile == null)
 				{
