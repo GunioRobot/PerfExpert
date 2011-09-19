@@ -235,7 +235,6 @@ public class HPCToolkitPresentation
 					metricType = Metric.METRIC_RATIO;
 					if (printPercentHeader == false)
 					{
-						System.out.print("\n");
 						printPercentHeader = true;
 					}
 
@@ -252,7 +251,7 @@ public class HPCToolkitPresentation
 					if (printPerfHeader == false)
 					{
 						// Print perf header
-						System.out.println("\n-------------------------------------------------------------------------------");
+						System.out.println("-------------------------------------------------------------------------------");
 						System.out.println (String.format("%-25s  LCPI good......okay......fair......poor......bad....", "performance assessment"));
 						printPerfHeader = true;
 					}
