@@ -220,16 +220,25 @@ done
 
 echo
 echo -n "PerfExpert: Finished all measurements, summarizing the results..."
-${HPCTOOLKIT_BIN}/hpcprof --force-metric --metric=thread --struct ${tempDir}/hpcstruct --output ${tempDir}/database ${tempDir}/measurements &> ${tempDir}/hpcprof.message
+returnCode=`${HPCTOOLKIT_BIN}/hpcprof --force-metric --metric=thread --struct ${tempDir}/hpcstruct --output ${tempDir}/database ${tempDir}/measurements &> ${tempDir}/hpcprof.message`
 cat ${tempDir}/hpcprof.message >> perfexpert.log
 
-echo "done!"
+if [ "x${returnCode}" != "x0" ]
+then
+	echo "error:"
+	cat ${tempDir}/hpcprof.message
 
-# Get the final experiment.xml here
-mv ${tempDir}/database/experiment.xml ./${output_filename}
+	# Clean up
+	rm -rf ${tempDir}
+else
+	echo "done!"
 
-# Clean up
-rm -rf ${tempDir}
+	# Get the final experiment.xml here
+	mv ${tempDir}/database/experiment.xml ./${output_filename}
 
-echo "PerfExpert: Run the following command to analyze the measurement data:"
-echo "perfexpert <threshold-between-0-and-1> ./${output_filename}"
+	# Clean up
+	rm -rf ${tempDir}
+
+	echo "PerfExpert: Run the following command to analyze the measurement data:"
+	echo "perfexpert <threshold-between-0-and-1> ./${output_filename}"
+fi
