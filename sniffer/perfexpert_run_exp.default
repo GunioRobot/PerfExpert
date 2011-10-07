@@ -205,7 +205,7 @@ do
 		eval ${dbg_cmd}
 
 		echo "PerfExpert: Collecting debug information from hpcrun monitor..."
-		dbg_cmd="${HPCTOOLKIT_BIN}/hpcrun --monitor-debug ${experiment[${index}]} --output ${tempDir}/measurements ${program_name} ${arguments} >> ${debug_file} 2>&1"
+		dbg_cmd="${HPCTOOLKIT_BIN}/hpcrun --monitor-debug ${experiment[${index}]} --output ${tempDir}/measurements ${program_name} ${arguments} 2>> ${debug_file} 1>/dev/null"
 		echo -e "\nCommand: ${dbg_cmd}\n" >> ${debug_file}
 		eval ${dbg_cmd}
 
