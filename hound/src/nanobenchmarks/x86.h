@@ -8,13 +8,192 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
-double allocateAndTestMainMemory(long size, int stride, unsigned char warmup)
+#define overhead_calc(count, label_prefix)				\
+		start_timer()						\
+									\
+		/* Set up the loop */					\
+		"movl	$"#count", %%ecx\n\t"				\
+		"xorl	%%ebx, %%ebx\n\t"				\
+		"fld	8(%%ebp)\n\t"					\
+									\
+		core("", label_prefix, overhead, "$1")			\
+									\
+		/* End measuring */					\
+	"overhead"#label_prefix"out:\n\t"				\
+		"movl	%%ebx, -16(%%ebp)\n\t"				\
+		stop_timer()						\
+									\
+		/* Subtract the overhead */				\
+		"movl	-20(%%ebp), %%ebx\n\t"				\
+		"subl	%%eax, %%ebx\n\t"				\
+		"movl	%%ebx, %%eax\n\t"				\
+
+
+#define core(instruction_block, label_prefix, overhead_prefix, incr)	\
+	#overhead_prefix#label_prefix"loop:\n\t"			\
+		"cmp	$0, %%ecx\n\t"					\
+		"je	"#overhead_prefix#label_prefix"out\n\t"		\
+		instruction_block					\
+		"decl	%%ecx\n\t"					\
+		"addl	"incr", %%ebx\n\t"				\
+		"jmp	"#overhead_prefix#label_prefix"loop\n\t"
+
+
+#define measure(init_block, instruction_block, count, label_prefix)	\
+		start_timer()						\
+									\
+		/* Set up the loop */					\
+		"movl	$"#count", %%ecx\n\t"				\
+		"xorl	%%ebx, %%ebx\n\t"				\
+		init_block						\
+									\
+		core(instruction_block, label_prefix, , "$1")		\
+									\
+		/* End measuring */					\
+	#label_prefix"out:\n\t"						\
+		"movl	%%ebx, -16(%%ebp)\n\t"				\
+		stop_timer()						\
+									\
+		/* Store the result (with overhead) */			\
+		"movl	%%eax, -20(%%ebp)\n\t"
+
+
+#define	setup()	/* Create space for stack var and push regs on stack */	\
+		"pushl	%%ebp\n\t"					\
+		"movl	%%esp, %%ebp\n\t"				\
+		"subl	$20, %%esp\n\t"					\
+									\
+		/* Push all regs that we will use in this routine, */	\
+		/* which is basically all GPRs plus a few others */	\
+		"pushl	%%ebx\n\t"					\
+		"pushl	%%esi\n\t"					\
+		"pushl	%%edi\n\t"
+
+
+#define cleanup()							\
+		 /* Pop all the regs we used */				\
+		"popl	%%edi\n\t"					\
+		"popl	%%esi\n\t"					\
+		"popl	%%ebx\n\t"					\
+									\
+		/* Store the results */					\
+		"movl	%%eax, %0\n\t"					\
+		"movl	-16(%%ebp), %1\n\t"				\
+									\
+		/* Restore frame */					\
+		"addl	$20, %%esp\n\t"					\
+		"popl	%%ebp\n\t"
+
+
+#define start_timer()							\
+		"xorl	%%eax, %%eax\n\t"				\
+		"cpuid\n\t"						\
+		"rdtsc\n\t"						\
+		"movl	%%eax, -8(%%ebp)\n\t"				\
+		"movl	%%edx, -12(%%ebp)\n\t"				\
+
+
+#define stop_timer()							\
+		"xorl	%%eax, %%eax\n\t"				\
+		"cpuid\n\t"						\
+		"rdtsc\n\t"						\
+		"subl	-8(%%ebp), %%eax\n\t"				\
+		"sbb	-12(%%ebp), %%edx\n\t"
+
+
+#define measure_mem_with_overhead_calc(label_prefix)			\
+		setup()							\
+									\
+		/* Set up repeat counter */				\
+		"movl	16(%%ebp), %%edx\n\t"				\
+		"movl	12(%%ebp), %%ecx\n\t"				\
+		"movl	8(%%ebp), %%esi\n\t"				\
+		"movl	4(%%ebp), %%ebx\n\t"				\
+		"movl	%%ebx, -4(%%ebp)\n\t"				\
+									\
+	#label_prefix"repeat:\n\t"					\
+		start_timer()						\
+									\
+		/* Do some operation */					\
+		"xorl	%%ebx, %%ebx\n\t"				\
+		"movl	16(%%ebp), %%edx\n\t"				\
+		"movl	12(%%ebp), %%ecx\n\t"				\
+		"movl	8(%%ebp), %%esi\n\t"				\
+									\
+		core							\
+		(							\
+			"movl	(%%edx), %%edi\n\t"			\
+			"movl	%%edi, %%edx\n\t",			\
+			label_prefix,					\
+			,						\
+			"%%esi"						\
+		)							\
+									\
+	#label_prefix"out:\n\t"						\
+		/* End measuring */					\
+		"movl	%%ebx, -16(%%ebp)\n\t"				\
+									\
+		stop_timer()						\
+									\
+		/* Check if we have to repeat */			\
+		"decl	-4(%%ebp)\n\t"					\
+		"jnz	"#label_prefix"repeat\n\t"			\
+									\
+		/* Store the result (with overhead) */			\
+		"movl	%%eax, -20(%%ebp)\n\t"				\
+									\
+		/* Do everything all over again */			\
+		/* without the actual step to be measured */		\
+									\
+		start_timer()						\
+									\
+		/* Do some operation */					\
+		"xorl	%%ebx, %%ebx\n\t"				\
+		"movl	16(%%ebp), %%edx\n\t"				\
+		"movl	12(%%ebp), %%ecx\n\t"				\
+		"movl	8(%%ebp), %%esi\n\t"				\
+									\
+		core							\
+		(							\
+			"movl	%%edi, %%edx\n\t",			\
+			label_prefix,					\
+			overhead,					\
+			"%%esi"						\
+		)							\
+									\
+	"overhead"#label_prefix"out:\n\t"				\
+		/* End measuring */					\
+		"movl	%%ebx, -16(%%ebp)\n\t"				\
+									\
+		stop_timer()						\
+									\
+		/* Subtract the overhead */				\
+		"movl	-20(%%ebp), %%ebx\n\t"				\
+		"subl	%%eax, %%ebx\n\t"				\
+		"movl	%%ebx, %%eax\n\t"				\
+									\
+		cleanup()
+
+
+#define measure_block_with_overhead_calc(init_block, instruction_block, count, label_prefix)	/* Set up the frame */	\
+		setup()								\
+		measure(init_block, instruction_block, count, label_prefix)	\
+		overhead_calc(count,label_prefix)				\
+		cleanup()
+
+
+#define measure_block_without_overhead_calc(init_block, instruction_block, count, label_prefix)	/* Set up the frame */	\
+		setup()								\
+		measure(init_block, instruction_block, count, label_prefix)	\
+		cleanup()
+
+double allocateAndTest(long size, int stride, unsigned char warmup)
 {
 	if (stride > size)
 		return 0;
 
-	int i, ret, diff, count;
-	unsigned char *ptr;
+	size_t ret = 0, diff = 0, count = 0, my_stride = stride;
+	size_t *ptr;
 
 	if ((ret = posix_memalign((void**) &ptr, 8, size) != 0) || ptr == NULL)
 	{
@@ -27,20 +206,73 @@ double allocateAndTestMainMemory(long size, int stride, unsigned char warmup)
 		return 0;
 	}
 
-	long elements = size/stride-1;	// Assuming completely divisible
+	int i;
+	for (i=0; i<size/sizeof(size_t)-1; i++)
+		ptr[i] = (size_t) &(ptr[i+1]);
+
+	ptr[size/sizeof(size_t)-1] = (size_t) &(ptr[0]);
+
+	long loopCount = 1024*1024;
+	size_t repeatCount = (warmup == 0 ? 1 : 2);
+
+repeatIfNeg:
+	__asm__ volatile(
+		// Simulate a function call during entry
+		"pushl	%2\n\t"		// 32(%%ebp) ptr
+		"pushl	%3\n\t"		// 24(%%ebp) size
+		"pushl	%4\n\t"		// 16(%%ebp) stride
+		"pushl	%5\n\t"		// 8(%%ebp)  repeatCount
+
+		measure_mem_with_overhead_calc(cache)
+
+		"addl	$16, %%esp\n\t"
+
+	: "=eax" (diff), "=ecx" (count)
+	: "m" (ptr), "m" (loopCount), "m" (my_stride), "m" (repeatCount)
+	: "edx"
+	);
+
+	if (((long) diff) < 0)
+		goto repeatIfNeg;
+
+	free(ptr);
+	return diff / ((float) (count / ((float) stride)));
+}
+
+double allocateAndTestMainMemory(long size, int stride, unsigned char warmup)
+{
+	if (stride > size)
+		return 0;
+
+	int i;
+	size_t ret = 0, diff = 0, count = 0, my_stride = stride;
+	size_t *ptr;
+
+	if ((ret = posix_memalign((void**) &ptr, 8, size) != 0) || ptr == NULL)
+	{
+		if (errno == ENOMEM)
+			printf ("No memory\n");
+		else if (errno == EINVAL)
+			printf ("Not aligned\n");
+		else	printf ("Unknown error in allocating %ld size with %ld alignment\n", size, size);
+
+		return 0;
+	}
+
+	long elements = size/stride-1;  // Assuming completely divisible
 	int* swapBuffer = malloc(sizeof(int)*elements);
-	unsigned int* mem = (unsigned int *) ptr;
+	size_t* mem = (size_t *) ptr;
 	if (swapBuffer == NULL)
 	{
 		// Try the usual +512 skip
 		for (i=0; i<elements-1; i++)
 		{
-			*mem = (unsigned int) &ptr [(i+1)*stride];
-			mem = (unsigned int*) *mem;
+			*mem = (size_t) &ptr [(i+1)*stride/sizeof(size_t)];
+			mem = (size_t*) *mem;
 		}
 
 		// Loop back
-		*mem = (unsigned int) &ptr[0];
+		*mem = (size_t) &ptr[0];
 	}
 	else
 	{
@@ -55,615 +287,126 @@ double allocateAndTestMainMemory(long size, int stride, unsigned char warmup)
 			int temp = i*((float) rand() / RAND_MAX);
 			randomNumber = swapBuffer [temp];
 			swapBuffer[temp] = swapBuffer[i];
-			*mem = (unsigned int) &(ptr[randomNumber*512]);
-			mem = (unsigned int*) *mem;
+			*mem = (size_t) &(ptr[randomNumber*stride/sizeof(size_t)]);
+			mem = (size_t*) *mem;
 		}
 
 		// Loop back to the first location
-		*mem = (unsigned int) ptr;
+		*mem = (size_t) ptr;
 
-		free(swapBuffer);
+	       	free(swapBuffer);
 	}
 
-	int repeatCount = (warmup == 0 ? 1 : 2);
+	long loopCount = 1024*1024;
+	size_t repeatCount = (warmup == 0 ? 1 : 2);
 
 repeatIfNeg:
 	__asm__ volatile(
 		// Simulate a function call during entry
-		"pushl	%2\n\t"		// 16(%%ebp)
-		"pushl	%3\n\t"		// 12(%%ebp)
-		"pushl	%4\n\t"
-		"pushl	%5\n\t"
+		"pushl	%2\n\t"		// 32(%%ebp) ptr
+		"pushl	%3\n\t"		// 24(%%ebp) size
+		"pushl	%4\n\t"		// 16(%%ebp) stride
+		"pushl	%5\n\t"		// 8(%%ebp)  repeatCount
 
-		// Set up the frame
-		"pushl	%%ebp\n\t"
-		"movl	%%esp, %%ebp\n\t"
-		"subl	$20, %%esp\n\t"
+		measure_mem_with_overhead_calc(MM)
 
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushl	%%ebx\n\t"
-		"pushl	%%esi\n\t"
-		"pushl	%%edi\n\t"
-
-		// Setting up repeat counter
-		"movl	4(%%ebp), %%ebx\n\t"
-		"movl	%%ebx, -4(%%ebp)\n\t"
-
-	/*
-		"xorl	%%ebx, %%ebx\n\t"
-		"movl	16(%%ebp), %%edx\n\t"
-		"movl	12(%%ebp), %%ecx\n\t"
-		"movl	8(%%ebp), %%esi\n\t"
-		"movl	%%edx, %%edi\n\t"
-		"addl	%%esi, %%edi\n\t"
-
-	"setupMM:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	setupoutMM\n\t"
-		"movl	%%edi, (%%edx, %%ebx)\n\t"
-		"subl	%%esi, %%ecx\n\t"
-		"addl	%%esi, %%ebx\n\t"
-		"addl	%%esi, %%edi\n\t"
-		"jmp	setupMM\n\t"
-
-	"setupoutMM:\n\t"
-		// "Cyclic reference, last location contains address of first location
-		"movl	%%edx, (%%edx, %%ebx)\n\t"
-	*/
-
-	/*
-		// Change the count of times we loop over this cyclic array
-		"movl	12(%%ebp), %%ecx\n\t"
-		"addl	%%esi, %%ecx\n\t"
-
-	"shift:\n\t"
-		"cmpl	$0, %%esi\n\t"
-		"je	shiftout\n\t"
-		"shrl	$1, %%esi\n\t"
-		"shrl	$1, %%ecx\n\t"
-		"jmp	shift\n\t"
-
-	"shiftout:\n\t"
-	*/
-		// Loop a million times
-		"movl	$1048576, %%ecx\n\t"
-		"movl	%%ecx, 12(%%ebp)\n\t"
-
-	"repeatMM:\n\t"
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Do some operation
-		"xorl	%%ebx, %%ebx\n\t"
-		"movl	16(%%ebp), %%edx\n\t"
-		"movl	12(%%ebp), %%ecx\n\t"
-		"movl	8(%%ebp), %%esi\n\t"
-
-	"writeMM:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	outMM\n\t"
-		"movl	(%%edx), %%edi\n\t"
-		"movl	%%edi, %%edx\n\t"
-		"decl	%%ecx\n\t"
-		"addl	%%esi, %%ebx\n\t"
-		"jmp	writeMM\n\t"
-
-	"outMM:\n\t"
-		// End measuring
-		"movl	%%ebx, -16(%%ebp)\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Check if we have to repeat
-		"decl	-4(%%ebp)\n\t"
-		"jnz	repeatMM\n\t"
-
-		// Store the result (with overhead)
-		"movl	%%eax, -20(%%ebp)\n\t"
-
-		// Do everything all over again without the actual step to be measured
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Do some operation
-		"xorl	%%ebx, %%ebx\n\t"
-		"movl	16(%%ebp), %%edx\n\t"
-		"movl	12(%%ebp), %%ecx\n\t"
-		"movl	8(%%ebp), %%esi\n\t"
-
-	"overheadwriteMM:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	overheadoutMM\n\t"
-		"movl	%%edi, %%edx\n\t"
-		"decl	%%ecx\n\t"
-		"addl	%%esi, %%ebx\n\t"
-		"jmp	overheadwriteMM\n\t"
-
-	"overheadoutMM:\n\t"
-		// End measuring
-		"movl	%%ebx, -16(%%ebp)\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Subtract the overhead
-		"movl	-20(%%ebp), %%ebx\n\t"
-		"subl	%%eax, %%ebx\n\t"
-		"movl	%%ebx, %%eax\n\t"
-
-		// Store the results
-		"movl	%%eax, %0\n\t"
-		"movl	-16(%%ebp), %1\n\t"
-
-		// End of routine, pop all that we had pushed
-		"popl	%%edi\n\t"
-		"popl	%%esi\n\t"
-		"popl	%%ebx\n\t"
-
-		"addl	$20, %%esp\n\t"
-		"popl	%%ebp\n\t"
-
-		// Remove the initial user parameters
 		"addl	$16, %%esp\n\t"
-	: "=a" (diff), "=c" (count)
-	: "m" (ptr), "m" (size), "m" (stride), "m" (repeatCount)
-	: "esi"
+
+	: "=eax" (diff), "=ecx" (count)
+	: "m" (ptr), "m" (loopCount), "m" (my_stride), "m" (repeatCount)
+	: "edx"
 	);
 
 	if (((long) diff) < 0)
 		goto repeatIfNeg;
 
 	free(ptr);
-	// printf ("Count = %d, diff = %d\n", count/stride, diff);
-
-	return diff / ((float) (count / ((float) stride)));
-}
-
-double allocateAndTest(long size, int stride, unsigned char warmup)
-{
-	if (stride > size)
-		return 0;
-
-	int ret, diff, count;
-	unsigned char *ptr;
-
-	if ((ret = posix_memalign((void**) &ptr, 8, size) != 0) || ptr == NULL)
-	{
-		if (errno == ENOMEM)
-			printf ("No memory\n");
-		else if (errno == EINVAL)
-			printf ("Not aligned\n");
-		else	printf ("Unknown error in allocating %ld size with %ld alignment\n", size, size);
-
-		return 0;
-	}
-
-	int repeatCount = (warmup == 0 ? 1 : 2);
-
-repeatIfNeg:
-	__asm__ volatile(
-		// Simulate a function call during entry
-		"pushl	%2\n\t"		// 16(%%ebp)
-		"pushl	%3\n\t"		// 12(%%ebp)
-		"pushl	%4\n\t"
-		"pushl	%5\n\t"
-
-		// Set up the frame
-		"pushl	%%ebp\n\t"
-		"movl	%%esp, %%ebp\n\t"
-		"subl	$20, %%esp\n\t"
-
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushl	%%ebx\n\t"
-		"pushl	%%esi\n\t"
-		"pushl	%%edi\n\t"
-
-		// Setting up repeat counter
-		"movl	4(%%ebp), %%ebx\n\t"
-		"movl	%%ebx, -4(%%ebp)\n\t"
-
-		"xorl	%%ebx, %%ebx\n\t"
-		"movl	16(%%ebp), %%edx\n\t"
-		"movl	12(%%ebp), %%ecx\n\t"
-		"movl	8(%%ebp), %%esi\n\t"
-		"movl	%%edx, %%edi\n\t"
-		"addl	%%esi, %%edi\n\t"
-
-	"setup:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	setupout\n\t"
-		"movl	%%edi, (%%edx, %%ebx)\n\t"
-		"subl	%%esi, %%ecx\n\t"
-		"addl	%%esi, %%ebx\n\t"
-		"addl	%%esi, %%edi\n\t"
-		"jmp	setup\n\t"
-
-	"setupout:\n\t"
-		// "Cyclic reference, last location contains address of first location
-		"movl	%%edx, (%%edx, %%ebx)\n\t"
-
-	/*
-		// Change the count of times we loop over this cyclic array
-		"movl	12(%%ebp), %%ecx\n\t"
-		"addl	%%esi, %%ecx\n\t"
-
-	"shift:\n\t"
-		"cmpl	$0, %%esi\n\t"
-		"je	shiftout\n\t"
-		"shrl	$1, %%esi\n\t"
-		"shrl	$1, %%ecx\n\t"
-		"jmp	shift\n\t"
-
-	"shiftout:\n\t"
-	*/
-		// Loop a million times
-		"movl	$1048576, %%ecx\n\t"
-		"movl	%%ecx, 12(%%ebp)\n\t"
-
-	"repeat:\n\t"
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Do some operation
-		"xorl	%%ebx, %%ebx\n\t"
-		"movl	16(%%ebp), %%edx\n\t"
-		"movl	12(%%ebp), %%ecx\n\t"
-		"movl	8(%%ebp), %%esi\n\t"
-
-	"write:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	out\n\t"
-		"movl	(%%edx), %%edi\n\t"
-		"movl	%%edi, %%edx\n\t"
-		//"subl	%%esi, %%ecx\n\t"
-		"decl	%%ecx\n\t"
-		"addl	%%esi, %%ebx\n\t"
-		"jmp	write\n\t"
-
-	"out:\n\t"
-		// End measuring
-		"movl	%%ebx, -16(%%ebp)\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Check if we have to repeat
-		"decl	-4(%%ebp)\n\t"
-		"jnz	repeat\n\t"
-
-		// Store the result (with overhead)
-		"movl	%%eax, -20(%%ebp)\n\t"
-
-		// Do everything all over again without the actual step to be measured
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Do some operation
-		"xorl	%%ebx, %%ebx\n\t"
-		"movl	16(%%ebp), %%edx\n\t"
-		"movl	12(%%ebp), %%ecx\n\t"
-		"movl	8(%%ebp), %%esi\n\t"
-
-	"overheadwrite:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	overheadout\n\t"
-		"movl	%%edi, %%edx\n\t"
-		//"subl	%%esi, %%ecx\n\t"
-		"decl	%%ecx\n\t"
-		"addl	%%esi, %%ebx\n\t"
-		"jmp	overheadwrite\n\t"
-
-	"overheadout:\n\t"
-		// End measuring
-		"movl	%%ebx, -16(%%ebp)\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Subtract the overhead
-		"movl	-20(%%ebp), %%ebx\n\t"
-		"subl	%%eax, %%ebx\n\t"
-		"movl	%%ebx, %%eax\n\t"
-
-		// Store the results
-		"movl	%%eax, %0\n\t"
-		"movl	-16(%%ebp), %1\n\t"
-
-		// End of routine, pop all that we had pushed
-		"popl	%%edi\n\t"
-		"popl	%%esi\n\t"
-		"popl	%%ebx\n\t"
-
-		"addl	$20, %%esp\n\t"
-		"popl	%%ebp\n\t"
-
-		// Remove the initial user parameters
-		"addl	$16, %%esp\n\t"
-	: "=a" (diff), "=c" (count)
-	: "m" (ptr), "m" (size), "m" (stride), "m" (repeatCount)
-	: "esi"
-	);
-
-	if (((long) diff) < 0)
-		goto repeatIfNeg;
-
-	free(ptr);
-	// printf ("Count = %d, diff = %d\n", count/stride, diff);
-
 	return diff / ((float) (count / ((float) stride)));
 }
 
 double getFPLatency()
 {
-	int diff, count;
+	size_t diff, count;
 	float op1 = 1424.4525;
 	float op2 = 0.5636;
 
 	__asm__ volatile(
 		// Simulate a function call during entry
-		"pushl	%2\n\t"		// 8(%%ebp)
-		"pushl	%3\n\t"		// 4(%%ebp)
+		"pushl	%2\n\t"		// 16(%%ebp) ptr
+		"pushl	%3\n\t"		// 8(%%ebp) size
 
-		// Set up the frame
-		"pushl	%%ebp\n\t"
-		"movl	%%esp, %%ebp\n\t"
-		"subl	$20, %%esp\n\t"
+		measure_block_with_overhead_calc(
+			"fld	8(%%ebp)\n\t",
 
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushl	%%ebx\n\t"
-		"pushl	%%esi\n\t"
-		"pushl	%%edi\n\t"
+			"fadd	8(%%ebp)\n\t"
+			"fsub	4(%%ebp)\n\t",
+			65536, fp)
 
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Set up the loop
-		"movl	$65536, %%ecx\n\t"
-		"xorl	%%ebx, %%ebx\n\t"
-		"fld	8(%%ebp)\n\t"
-
-	"fploop:\n\t"
-		"cmp $0, %%ecx\n\t"
-		"je	fpout\n\t"
-		"fadd	8(%%ebp)\n\t"
-		"fmul	4(%%ebp)\n\t"
-		"fsub	8(%%ebp)\n\t"
-		"decl	%%ecx\n\t"
-		"incl	%%ebx\n\t"
-		"jmp	fploop\n\t"
-
-		// End measuring
-	"fpout:\n\t"
-		"movl	%%ebx, -16(%%ebp)\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-		"movl	-16(%%ebp), %%ebx\n\t"
-
-		// Store the result (with overhead)
-		"movl	%%eax, -20(%%ebp)\n\t"
-
-		// Do everything all over again without the actual step to be measured
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Set up the loop
-		"movl	$65536, %%ecx\n\t"
-		"xorl	%%ebx, %%ebx\n\t"
-		"fld	8(%%ebp)\n\t"
-
-	"overheadfploop:\n\t"
-		"cmp $0, %%ecx\n\t"
-		"je	overheadfpout\n\t"
-		"decl	%%ecx\n\t"
-		"incl	%%ebx\n\t"
-		"jmp	overheadfploop\n\t"
-
-		// End measuring
-	"overheadfpout:\n\t"
-		"movl	%%ebx, -16(%%ebp)\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Subtract the overhead
-		"movl	-20(%%ebp), %%ebx\n\t"
-		"subl	%%eax, %%ebx\n\t"
-		"movl	%%ebx, %%eax\n\t"
-		"movl	-16(%%ebp), %%ebx\n\t"
-
-		// Store the results
-		"movl	%%eax, %0\n\t"
-		"movl	%%ebx, %1\n\t"
-
-		// End of routine, pop all that we had pushed
-		"popl	%%edi\n\t"
-		"popl	%%esi\n\t"
-		"popl	%%ebx\n\t"
-
-		"addl	$20, %%esp\n\t"
-		"popl	%%ebp\n\t"
-
-		// Remove the initial user parameters
 		"addl	$8, %%esp\n\t"
-	: "=a" (diff), "=c" (count)
+
+	: "=eax" (diff), "=ecx" (count)
 	: "m" (op1), "m" (op2)
-	: "edx", "esi"
+	: "edx"
 	);
 
-	// printf ("Count = %d, diff = %d\n", count, diff);
-	return diff / ((double) count*3);
+	return diff / ((float) (count * 2));
 }
 
 double getFPSlowLatency()
 {
-	int diff, count;
+	size_t diff, count;
 	float op1 = 1424.4525;
 	float op2 = 0.5636;
 
 	__asm__ volatile(
 		// Simulate a function call during entry
-		"pushl	%2\n\t"		// 8(%%ebp)
-		"pushl	%3\n\t"		// 4(%%ebp)
+		"pushl	%2\n\t"		// 16(%%ebp) ptr
+		"pushl	%3\n\t"		// 8(%%ebp) size
 
-		// Set up the frame
-		"pushl	%%ebp\n\t"
-		"movl	%%esp, %%ebp\n\t"
-		"subl	$20, %%esp\n\t"
+		measure_block_with_overhead_calc(
+			"fld	8(%%ebp)\n\t",
 
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushl	%%ebx\n\t"
-		"pushl	%%esi\n\t"
-		"pushl	%%edi\n\t"
+			"fdiv	4(%%ebp)\n\t"
+			"fsqrt\n\t",
+			65536, fpslow)
 
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Set up the loop
-		"movl	$65536, %%ecx\n\t"
-		"xorl	%%ebx, %%ebx\n\t"
-		"fld	8(%%ebp)\n\t"
-
-	"fpslowloop:\n\t"
-		"cmp $0, %%ecx\n\t"
-		"je	fpslowout\n\t"
-		"fdiv	4(%%ebp)\n\t"
-		"fsqrt\n\t"
-		"decl	%%ecx\n\t"
-		"incl	%%ebx\n\t"
-		"jmp	fpslowloop\n\t"
-
-		// End measuring
-	"fpslowout:\n\t"
-		"movl	%%ebx, -16(%%ebp)\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-		"movl	-16(%%ebp), %%ebx\n\t"
-
-		// Store the result (with overhead)
-		"movl	%%eax, -20(%%ebp)\n\t"
-
-		// Do everything all over again without the actual step to be measured
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Set up the loop
-		"movl	$65536, %%ecx\n\t"
-		"xorl	%%ebx, %%ebx\n\t"
-		"fld	8(%%ebp)\n\t"
-
-	"overheadfpslowloop:\n\t"
-		"cmp $0, %%ecx\n\t"
-		"je	overheadfpslowout\n\t"
-		"decl	%%ecx\n\t"
-		"incl	%%ebx\n\t"
-		"jmp	overheadfpslowloop\n\t"
-
-		// End measuring
-	"overheadfpslowout:\n\t"
-		"movl	%%ebx, -16(%%ebp)\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Subtract the overhead
-		"movl	-20(%%ebp), %%ebx\n\t"
-		"subl	%%eax, %%ebx\n\t"
-		"movl	%%ebx, %%eax\n\t"
-
-		// Store the results
-		"movl	%%eax, %0\n\t"
-		"movl	-16(%%ebp), %1\n\t"
-
-		// End of routine, pop all that we had pushed
-		"popl	%%edi\n\t"
-		"popl	%%esi\n\t"
-		"popl	%%ebx\n\t"
-
-		"addl	$20, %%esp\n\t"
-		"popl	%%ebp\n\t"
-
-		// Remove the initial user parameters
 		"addl	$8, %%esp\n\t"
-	: "=a" (diff), "=c" (count)
+
+	: "=eax" (diff), "=ecx" (count)
 	: "m" (op1), "m" (op2)
-	: "edx", "esi"
+	: "edx"
 	);
 
-	return diff / ((double) count*2);
+	return diff / ((float) (count * 2));
+}
+
+double getPredictedBranchLatency()
+{
+	size_t diff, count;
+	__asm__ volatile(
+
+		measure_block_with_overhead_calc(
+			"",
+			"cmpl	$0, %%eax\n\t"
+			"je	pbranchnext\n\t"
+		"pbranchnext:\n\t",
+			65536, pbranch)
+
+	: "=eax" (diff), "=ecx" (count)
+	:
+	: "edx"
+	);
+
+	return diff / 65536.0;
 }
 
 double getMisPredictedBranchLatency()
 {
-	int diff;
+	size_t diff, count;
 	__asm__ volatile(
-		// Set up the frame
-		"pushl	%%ebp\n\t"
-		"movl	%%esp, %%ebp\n\t"
-		"subl	$16, %%esp\n\t"
 
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushl	%%ebx\n\t"
-		"pushl	%%esi\n\t"
-		"pushl	%%edi\n\t"
-
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
+		measure_block_without_overhead_calc(
+			"",
 			"jmp	labelM01\n\t"
 	"labelM01:	jmp	labelM02\n\t"
 	"labelM02:	jmp	labelM03\n\t"
@@ -728,135 +471,25 @@ double getMisPredictedBranchLatency()
 	"labelM61:	jmp	labelM62\n\t"
 	"labelM62:	jmp	labelM63\n\t"
 	"labelM63:	jmp	labelM64\n\t"
-	"labelM64:\n\t"
+	"labelM64:\n\t",
+		1, mpbranch)
 
-		// End measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Store the results
-		"movl	%%eax, %0\n\t"
-
-		// End of routine, pop all that we had pushed
-		"popl	%%edi\n\t"
-		"popl	%%esi\n\t"
-		"popl	%%ebx\n\t"
-
-		"addl	$16, %%esp\n\t"
-		"popl	%%ebp\n\t"
-	: "=a" (diff)
+	: "=eax" (diff), "=ecx" (count)
 	:
-	: "ecx", "edx", "esi"
+	: "edx"
 	);
 
-	return diff/64.0;
-}
-
-double getPredictedBranchLatency()
-{
-	int diff;
-	__asm__ volatile(
-		// Set up the frame
-		"pushl	%%ebp\n\t"
-		"movl	%%esp, %%ebp\n\t"
-		"subl	$20, %%esp\n\t"
-
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushl	%%ebx\n\t"
-		"pushl	%%esi\n\t"
-		"pushl	%%edi\n\t"
-
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Set up the loop
-		"movl	$65536, %%ecx\n\t"
-		"xorl	%%eax, %%eax\n\t"
-
-	"pbranch:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	pbranchout\n\t"
-		"cmpl	$0, %%eax\n\t"
-		"je	pbranchnext\n\t"
-
-	"pbranchnext:\n\t"
-		"decl	%%ecx\n\t"
-		"jmp	pbranch\n\t"
-
-		// End measuring
-	"pbranchout:\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Store the result (with overhead)
-		"movl	%%eax, -20(%%ebp)\n\t"
-
-		// Do everything all over again without the actual step to be measured
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Set up the loop
-		"movl	$65536, %%ecx\n\t"
-		"xorl	%%eax, %%eax\n\t"
-
-	"overheadpbranch:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	overheadpbranchout\n\t"
-		"decl	%%ecx\n\t"
-		"jmp	overheadpbranch\n\t"
-
-		// End measuring
-	"overheadpbranchout:\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Subtract the overhead
-		"movl	-20(%%ebp), %%ebx\n\t"
-		"subl	%%eax, %%ebx\n\t"
-		"movl	%%ebx, %%eax\n\t"
-
-		// Store the results
-		"movl	%%eax, %0\n\t"
-
-		// End of routine, pop all that we had pushed
-		"popl	%%edi\n\t"
-		"popl	%%esi\n\t"
-		"popl	%%ebx\n\t"
-
-		"addl	$20, %%esp\n\t"
-		"popl	%%ebp\n\t"
-	: "=a" (diff)
-	:
-	: "ecx", "edx", "esi"
-	);
-
-	return diff / 65536.0;
+	return diff / 64.0;
 }
 
 double getTLBLatency(long size)
 {
-	int ret, diff, count;
-	int stride = getpagesize();
+	size_t ret = 0, diff = 0, count = 0;
+	size_t stride = getpagesize();
 	int warmup = 0;
 
-	unsigned char *ptr;
+	size_t *ptr;
+
 	if ((ret = posix_memalign((void**) &ptr, 8, size) != 0) || ptr == NULL)
 	{
 		if (errno == ENOMEM)
@@ -868,164 +501,32 @@ double getTLBLatency(long size)
 		return 0;
 	}
 
-	int repeatCount = (warmup == 0 ? 1 : 2);
+	int i, unit_inc = stride/sizeof(size_t);
+	for (i=0; i<size/stride-1; i++)
+		ptr[i*unit_inc] = (size_t) &(ptr[(i+1)*unit_inc]);
+
+	ptr[(size/stride-1) * unit_inc] = (size_t) &(ptr[0]);
+
+	size = size / stride;
+	size_t repeatCount = (warmup == 0 ? 1 : 2);
 
 	__asm__ volatile(
 		// Simulate a function call during entry
-		"pushl	%2\n\t"		// 16(%%ebp)
-		"pushl	%3\n\t"		// 12(%%ebp)
-		"pushl	%4\n\t"
-		"pushl	%5\n\t"
+		"pushl	%2\n\t"		// 32(%%ebp) ptr
+		"pushl	%3\n\t"		// 24(%%ebp) size
+		"pushl	%4\n\t"		// 16(%%ebp) stride
+		"pushl	%5\n\t"		// 8(%%ebp)  repeatCount
 
-		// Set up the frame
-		"pushl	%%ebp\n\t"
-		"movl	%%esp, %%ebp\n\t"
-		"subl	$20, %%esp\n\t"
+		measure_mem_with_overhead_calc(tlb)
 
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushl	%%ebx\n\t"
-		"pushl	%%esi\n\t"
-		"pushl	%%edi\n\t"
-
-		// Setting up repeat counter
-		"movl	4(%%ebp), %%ebx\n\t"
-		"movl	%%ebx, -4(%%ebp)\n\t"
-
-		"xorl	%%ebx, %%ebx\n\t"
-		"movl	16(%%ebp), %%edx\n\t"
-		"movl	12(%%ebp), %%ecx\n\t"
-		"movl	8(%%ebp), %%esi\n\t"
-		"movl	%%edx, %%edi\n\t"
-		"addl	%%esi, %%edi\n\t"
-
-	"tlbsetup:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	tlbsetupout\n\t"
-		"movl	%%edi, (%%edx, %%ebx)\n\t"
-		"subl	%%esi, %%ecx\n\t"
-		"addl	%%esi, %%ebx\n\t"
-		"addl	%%esi, %%edi\n\t"
-		"jmp	tlbsetup\n\t"
-
-	"tlbsetupout:\n\t"
-		// "Cyclic reference, last location contains address of first location
-		"movl	%%edx, (%%edx, %%ebx)\n\t"
-
-		// Change the count of times we loop over this cyclic array
-		"movl	12(%%ebp), %%ecx\n\t"
-		"addl	%%esi, %%ecx\n\t"
-
-	"tlbshift:\n\t"
-		"cmpl	$1, %%esi\n\t"
-		"je	tlbshiftout\n\t"
-		"shrl	$1, %%esi\n\t"
-		"shrl	$1, %%ecx\n\t"
-		"jmp	tlbshift\n\t"
-
-	"tlbshiftout:\n\t"
-		// Loop a million times
-		"movl	%%ecx, 12(%%ebp)\n\t"
-
-	"tlbrepeat:\n\t"
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Do some operation
-		"xorl	%%ebx, %%ebx\n\t"
-		"movl	16(%%ebp), %%edx\n\t"
-		"movl	12(%%ebp), %%ecx\n\t"
-		"movl	8(%%ebp), %%esi\n\t"
-
-	"tlbwrite:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	tlbout\n\t"
-		"movl	(%%edx), %%edi\n\t"
-		"movl	%%edi, %%edx\n\t"
-		"decl	%%ecx\n\t"
-		"addl	%%esi, %%ebx\n\t"
-		"jmp	tlbwrite\n\t"
-
-	"tlbout:\n\t"
-		// End measuring
-		"movl	%%ebx, -16(%%ebp)\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Check if we have to repeat
-		"decl	-4(%%ebp)\n\t"
-		"jnz	tlbrepeat\n\t"
-
-		// Store the result (with overhead)
-		"movl	%%eax, -20(%%ebp)\n\t"
-
-		// TODO: We now have to subtract the cycles spent in TLB hits, so access the last 32 locations,
-		// extrapolate to original count and subtract
-
-		// Do everything all over again without the actual step to be measured
-		// Start measuring
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movl	%%eax, -8(%%ebp)\n\t"
-		"movl	%%edx, -12(%%ebp)\n\t"
-
-		// Do some operation
-		"xorl	%%ebx, %%ebx\n\t"
-		"movl	16(%%ebp), %%edx\n\t"
-		"movl	12(%%ebp), %%ecx\n\t"
-		"movl	8(%%ebp), %%esi\n\t"
-
-	"tlboverheadwrite:\n\t"
-		"cmpl	$0, %%ecx\n\t"
-		"je	tlboverheadout\n\t"
-		"movl	%%edi, %%edx\n\t"
-		"decl	%%ecx\n\t"
-		"addl	%%esi, %%ebx\n\t"
-		"jmp	tlboverheadwrite\n\t"
-
-	"tlboverheadout:\n\t"
-		// End measuring
-		"movl	%%ebx, -16(%%ebp)\n\t"
-		"xorl	%%eax, %%eax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subl	-8(%%ebp), %%eax\n\t"
-		"sbb	-12(%%ebp), %%edx\n\t"
-
-		// Subtract the overhead
-		"movl	-20(%%ebp), %%ebx\n\t"
-		"subl	%%eax, %%ebx\n\t"
-		"movl	%%ebx, %%eax\n\t"
-
-		// Store the results
-		"movl	%%eax, %0\n\t"
-		"movl	-16(%%ebp), %1\n\t"
-
-		// End of routine, pop all that we had pushed
-		"popl	%%edi\n\t"
-		"popl	%%esi\n\t"
-		"popl	%%ebx\n\t"
-
-		"addl	$20, %%esp\n\t"
-		"popl	%%ebp\n\t"
-
-		// Remove the initial user parameters
 		"addl	$16, %%esp\n\t"
-	: "=a" (diff), "=c" (count)
+
+	: "=eax" (diff), "=ecx" (count)
 	: "m" (ptr), "m" (size), "m" (stride), "m" (repeatCount)
-	: "edx", "esi"
+	: "edx"
 	);
 
 	free(ptr);
-	//printf ("Count = %d, diff = %d\n", count/stride, diff);
-
 	return diff / ((float) (count / ((float) stride)));
 }
 
