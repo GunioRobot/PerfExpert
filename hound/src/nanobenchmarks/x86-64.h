@@ -8,13 +8,192 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
+#define overhead_calc(count, label_prefix)				\
+		start_timer()						\
+									\
+		/* Set up the loop */					\
+		"movq	$"#count", %%rcx\n\t"				\
+		"xorq	%%rbx, %%rbx\n\t"				\
+		"fld	16(%%rbp)\n\t"					\
+									\
+		core("", label_prefix, overhead, "$1")			\
+									\
+		/* End measuring */					\
+	"overhead"#label_prefix"out:\n\t"				\
+		"movq	%%rbx, -32(%%rbp)\n\t"				\
+		stop_timer()						\
+									\
+		/* Subtract the overhead */				\
+		"movq	-40(%%rbp), %%rbx\n\t"				\
+		"subq	%%rax, %%rbx\n\t"				\
+		"movq	%%rbx, %%rax\n\t"				\
+
+
+#define core(instruction_block, label_prefix, overhead_prefix, incr)	\
+	#overhead_prefix#label_prefix"loop:\n\t"			\
+		"cmp	$0, %%rcx\n\t"					\
+		"je	"#overhead_prefix#label_prefix"out\n\t"		\
+		instruction_block					\
+		"decq	%%rcx\n\t"					\
+		"addq	"incr", %%rbx\n\t"				\
+		"jmp	"#overhead_prefix#label_prefix"loop\n\t"
+
+
+#define measure(init_block, instruction_block, count, label_prefix)	\
+		start_timer()						\
+									\
+		/* Set up the loop */					\
+		"movq	$"#count", %%rcx\n\t"				\
+		"xorq	%%rbx, %%rbx\n\t"				\
+		init_block						\
+									\
+		core(instruction_block, label_prefix, , "$1")		\
+									\
+		/* End measuring */					\
+	#label_prefix"out:\n\t"						\
+		"movq	%%rbx, -32(%%rbp)\n\t"				\
+		stop_timer()						\
+									\
+		/* Store the result (with overhead) */			\
+		"movq	%%rax, -40(%%rbp)\n\t"
+
+
+#define	setup()	/* Create space for stack var and push regs on stack */	\
+		"pushq	%%rbp\n\t"					\
+		"movq	%%rsp, %%rbp\n\t"				\
+		"subq	$40, %%rsp\n\t"					\
+									\
+		/* Push all regs that we will use in this routine, */	\
+		/* which is basically all GPRs plus a few others */	\
+		"pushq	%%rbx\n\t"					\
+		"pushq	%%rsi\n\t"					\
+		"pushq	%%rdi\n\t"
+
+
+#define cleanup()							\
+		 /* Pop all the regs we used */				\
+		"popq	%%rdi\n\t"					\
+		"popq	%%rsi\n\t"					\
+		"popq	%%rbx\n\t"					\
+									\
+		/* Store the results */					\
+		"movq	%%rax, %0\n\t"					\
+		"movq	-32(%%rbp), %1\n\t"				\
+									\
+		/* Restore frame */					\
+		"addq	$40, %%rsp\n\t"					\
+		"popq	%%rbp\n\t"
+
+
+#define start_timer()							\
+		"xorq	%%rax, %%rax\n\t"				\
+		"cpuid\n\t"						\
+		"rdtsc\n\t"						\
+		"movq	%%rax, -16(%%rbp)\n\t"				\
+		"movq	%%rdx, -24(%%rbp)\n\t"				\
+
+
+#define stop_timer()							\
+		"xorq	%%rax, %%rax\n\t"				\
+		"cpuid\n\t"						\
+		"rdtsc\n\t"						\
+		"subq	-16(%%rbp), %%rax\n\t"				\
+		"sbb	-24(%%rbp), %%rdx\n\t"
+
+
+#define measure_mem_with_overhead_calc(label_prefix)			\
+		setup()							\
+									\
+		/* Set up repeat counter */				\
+		"movq	32(%%rbp), %%rdx\n\t"				\
+		"movq	24(%%rbp), %%rcx\n\t"				\
+		"movq	16(%%rbp), %%rsi\n\t"				\
+		"movq	8(%%rbp), %%rbx\n\t"				\
+		"movq	%%rbx, -8(%%rbp)\n\t"				\
+									\
+	#label_prefix"repeat:\n\t"					\
+		start_timer()						\
+									\
+		/* Do some operation */					\
+		"xorq	%%rbx, %%rbx\n\t"				\
+		"movq	32(%%rbp), %%rdx\n\t"				\
+		"movq	24(%%rbp), %%rcx\n\t"				\
+		"movq	16(%%rbp), %%rsi\n\t"				\
+									\
+		core							\
+		(							\
+			"movq	(%%rdx), %%rdi\n\t"			\
+			"movq	%%rdi, %%rdx\n\t",			\
+			label_prefix,					\
+			,						\
+			"%%rsi"						\
+		)							\
+									\
+	#label_prefix"out:\n\t"						\
+		/* End measuring */					\
+		"movq	%%rbx, -32(%%rbp)\n\t"				\
+									\
+		stop_timer()						\
+									\
+		/* Check if we have to repeat */			\
+		"decq	-8(%%rbp)\n\t"					\
+		"jnz	"#label_prefix"repeat\n\t"			\
+									\
+		/* Store the result (with overhead) */			\
+		"movq	%%rax, -40(%%rbp)\n\t"				\
+									\
+		/* Do everything all over again */			\
+		/* without the actual step to be measured */		\
+									\
+		start_timer()						\
+									\
+		/* Do some operation */					\
+		"xorq	%%rbx, %%rbx\n\t"				\
+		"movq	32(%%rbp), %%rdx\n\t"				\
+		"movq	24(%%rbp), %%rcx\n\t"				\
+		"movq	16(%%rbp), %%rsi\n\t"				\
+									\
+		core							\
+		(							\
+			"movq	%%rdi, %%rdx\n\t",			\
+			label_prefix,					\
+			overhead,					\
+			"%%rsi"						\
+		)							\
+									\
+	"overhead"#label_prefix"out:\n\t"				\
+		/* End measuring */					\
+		"movq	%%rbx, -32(%%rbp)\n\t"				\
+									\
+		stop_timer()						\
+									\
+		/* Subtract the overhead */				\
+		"movq	-40(%%rbp), %%rbx\n\t"				\
+		"subq	%%rax, %%rbx\n\t"				\
+		"movq	%%rbx, %%rax\n\t"				\
+									\
+		cleanup()
+
+
+#define measure_block_with_overhead_calc(init_block, instruction_block, count, label_prefix)	/* Set up the frame */	\
+		setup()								\
+		measure(init_block, instruction_block, count, label_prefix)	\
+		overhead_calc(count,label_prefix)				\
+		cleanup()
+
+
+#define measure_block_without_overhead_calc(init_block, instruction_block, count, label_prefix)	/* Set up the frame */	\
+		setup()								\
+		measure(init_block, instruction_block, count, label_prefix)	\
+		cleanup()
+
 double allocateAndTest(long size, int stride, unsigned char warmup)
 {
 	if (stride > size)
 		return 0;
 
 	size_t ret = 0, diff = 0, count = 0, my_stride = stride;
-	unsigned char *ptr;
+	size_t *ptr;
 
 	if ((ret = posix_memalign((void**) &ptr, 8, size) != 0) || ptr == NULL)
 	{
@@ -27,6 +206,13 @@ double allocateAndTest(long size, int stride, unsigned char warmup)
 		return 0;
 	}
 
+	int i;
+	for (i=0; i<size/sizeof(size_t)-1; i++)
+		ptr[i] = (size_t) &(ptr[i+1]);
+
+	ptr[size/sizeof(size_t)-1] = (size_t) &(ptr[0]);
+
+	long loopCount = 1024*1024;
 	size_t repeatCount = (warmup == 0 ? 1 : 2);
 
 repeatIfNeg:
@@ -37,136 +223,12 @@ repeatIfNeg:
 		"pushq	%4\n\t"		// 16(%%ebp) stride
 		"pushq	%5\n\t"		// 8(%%ebp)  repeatCount
 
-		// Set up the frame
-		"pushq	%%rbp\n\t"
-		"movq	%%rsp, %%rbp\n\t"
-		"subq	$40, %%rsp\n\t"
-
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushq	%%rbx\n\t"
-		"pushq	%%rsi\n\t"
-		"pushq	%%rdi\n\t"
-
-		// Set up repeat counter
-		"movq	8(%%rbp), %%rbx\n\t"
-		"movq	%%rbx, -8(%%rbp)\n\t"
-
-		"xorq	%%rbx, %%rbx\n\t"
-		"movq	32(%%rbp), %%rdx\n\t"
-		"movq	24(%%rbp), %%rcx\n\t"
-		"movq	16(%%rbp), %%rsi\n\t"
-		"movq	%%rdx, %%rdi\n\t"
-		"addq	%%rsi, %%rdi\n\t"
-
-	"setup:\n\t"
-		"cmpq	$0, %%rcx\n\t"
-		"je	setupout\n\t"
-		"movq	%%rdi, (%%rdx, %%rbx)\n\t"
-		"subq	%%rsi, %%rcx\n\t"
-		"addq	%%rsi, %%rbx\n\t"
-		"addq	%%rsi, %%rdi\n\t"
-		"jmp	setup\n\t"
-
-	"setupout:\n\t"
-		// "Cyclic reference, last location contains address of first location
-		"movq	%%rdx, (%%rdx, %%rbx)\n\t"
-
-		// Loop a million times
-		"movq	$1048576, %%rcx\n\t"
-		"movq	%%rcx, 24(%%rbp)\n\t"
-
-	"repeat:\n\t"
-		// Start measuring
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movq	%%rax, -16(%%rbp)\n\t"
-		"movq	%%rdx, -24(%%rbp)\n\t"
-
-		// Do some operation
-		"xorq	%%rbx, %%rbx\n\t"
-		"movq	32(%%rbp), %%rdx\n\t"
-		"movq	24(%%rbp), %%rcx\n\t"
-		"movq	16(%%rbp), %%rsi\n\t"
-
-	"write:\n\t"
-		"cmpq	$0, %%rcx\n\t"
-		"je	out\n\t"
-		"movq	(%%rdx), %%rdi\n\t"
-		"movq	%%rdi, %%rdx\n\t"
-		"decq	%%rcx\n\t"
-		"addq	%%rsi, %%rbx\n\t"
-		"jmp	write\n\t"
-
-	"out:\n\t"
-		// End measuring
-		"movq	%%rbx, -32(%%rbp)\n\t"
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subq	-16(%%rbp), %%rax\n\t"
-		"sbb	-24(%%rbp), %%rdx\n\t"
-
-		// Check if we have to repeat
-		"decq	-8(%%rbp)\n\t"
-		"jnz	repeat\n\t"
-
-		// Store the result (with overhead)
-		"movq	%%rax, -40(%%rbp)\n\t"
-
-		// Do everything all over again without the actual step to be measured
-		// Start measuring
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movq	%%rax, -16(%%rbp)\n\t"
-		"movq	%%rdx, -24(%%rbp)\n\t"
-
-		// Do some operation
-		"xorq	%%rbx, %%rbx\n\t"
-		"movq	32(%%rbp), %%rdx\n\t"
-		"movq	24(%%rbp), %%rcx\n\t"
-		"movq	16(%%rbp), %%rsi\n\t"
-
-	"overheadwrite:\n\t"
-		"cmpq	$0, %%rcx\n\t"
-		"je	overheadout\n\t"
-		"movq	%%rdi, %%rdx\n\t"
-		"decq	%%rcx\n\t"
-		"addq	%%rsi, %%rbx\n\t"
-		"jmp	overheadwrite\n\t"
-
-	"overheadout:\n\t"
-		// End measuring
-		"movq	%%rbx, -32(%%rbp)\n\t"
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subq	-16(%%rbp), %%rax\n\t"
-		"sbb	-24(%%rbp), %%rdx\n\t"
-
-		// Subtract the overhead
-		"movq	-40(%%rbp), %%rbx\n\t"
-		"subq	%%rax, %%rbx\n\t"
-		"movq	%%rbx, %%rax\n\t"
-
-		// Pop all the regs we used
-		"popq	%%rdi\n\t"
-		"popq	%%rsi\n\t"
-		"popq	%%rbx\n\t"
-
-		// Store the results
-		"movq	%%rax, %0\n\t"
-		"movq	-32(%%rbp), %1\n\t"
-
-		// Restore frame
-		"addq	$40, %%rsp\n\t"
-		"popq	%%rbp\n\t"
+		measure_mem_with_overhead_calc(cache)
 
 		"addq	$32, %%rsp\n\t"
 
 	: "=rax" (diff), "=rcx" (count)
-	: "m" (ptr), "m" (size), "m" (my_stride), "m" (repeatCount)
+	: "m" (ptr), "m" (loopCount), "m" (my_stride), "m" (repeatCount)
 	: "rdx"
 	);
 
@@ -184,7 +246,7 @@ double allocateAndTestMainMemory(long size, int stride, unsigned char warmup)
 
 	int i;
 	size_t ret = 0, diff = 0, count = 0, my_stride = stride;
-	unsigned char *ptr;
+	size_t *ptr;
 
 	if ((ret = posix_memalign((void**) &ptr, 8, size) != 0) || ptr == NULL)
 	{
@@ -205,7 +267,7 @@ double allocateAndTestMainMemory(long size, int stride, unsigned char warmup)
 		// Try the usual +512 skip
 		for (i=0; i<elements-1; i++)
 		{
-			*mem = (size_t) &ptr [(i+1)*stride];
+			*mem = (size_t) &ptr [(i+1)*stride/sizeof(size_t)];
 			mem = (size_t*) *mem;
 		}
 
@@ -225,7 +287,7 @@ double allocateAndTestMainMemory(long size, int stride, unsigned char warmup)
 			int temp = i*((float) rand() / RAND_MAX);
 			randomNumber = swapBuffer [temp];
 			swapBuffer[temp] = swapBuffer[i];
-			*mem = (size_t) &(ptr[randomNumber*512]);
+			*mem = (size_t) &(ptr[randomNumber*stride/sizeof(size_t)]);
 			mem = (size_t*) *mem;
 		}
 
@@ -235,6 +297,7 @@ double allocateAndTestMainMemory(long size, int stride, unsigned char warmup)
 	       	free(swapBuffer);
 	}
 
+	long loopCount = 1024*1024;
 	size_t repeatCount = (warmup == 0 ? 1 : 2);
 
 repeatIfNeg:
@@ -245,116 +308,12 @@ repeatIfNeg:
 		"pushq	%4\n\t"		// 16(%%ebp) stride
 		"pushq	%5\n\t"		// 8(%%ebp)  repeatCount
 
-		// Set up the frame
-		"pushq	%%rbp\n\t"
-		"movq	%%rsp, %%rbp\n\t"
-		"subq	$40, %%rsp\n\t"
-
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushq	%%rbx\n\t"
-		"pushq	%%rsi\n\t"
-		"pushq	%%rdi\n\t"
-
-		// Set up repeat counter
-		"movq	8(%%rbp), %%rbx\n\t"
-		"movq	%%rbx, -8(%%rbp)\n\t"
-
-		// Loop a million times
-		"movq	$1048576, %%rcx\n\t"
-		"movq	%%rcx, 24(%%rbp)\n\t"
-
-	"repeatMM:\n\t"
-		// Start measuring
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movq	%%rax, -16(%%rbp)\n\t"
-		"movq	%%rdx, -24(%%rbp)\n\t"
-
-		// Do some operation
-		"xorq	%%rbx, %%rbx\n\t"
-		"movq	32(%%rbp), %%rdx\n\t"
-		"movq	24(%%rbp), %%rcx\n\t"
-		"movq	16(%%rbp), %%rsi\n\t"
-
-	"writeMM:\n\t"
-		"cmpq	$0, %%rcx\n\t"
-		"je	outMM\n\t"
-		"movq	(%%rdx), %%rdi\n\t"
-		"movq	%%rdi, %%rdx\n\t"
-		"decq	%%rcx\n\t"
-		"addq	%%rsi, %%rbx\n\t"
-		"jmp	writeMM\n\t"
-
-	"outMM:\n\t"
-		// End measuring
-		"movq	%%rbx, -32(%%rbp)\n\t"
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subq	-16(%%rbp), %%rax\n\t"
-		"sbb	-24(%%rbp), %%rdx\n\t"
-
-		// Check if we have to repeat
-		"decq	-8(%%rbp)\n\t"
-		"jnz	repeatMM\n\t"
-
-		// Store the result (with overhead)
-		"movq	%%rax, -40(%%rbp)\n\t"
-
-		// Do everything all over again without the actual step to be measured
-		// Start measuring
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movq	%%rax, -16(%%rbp)\n\t"
-		"movq	%%rdx, -24(%%rbp)\n\t"
-
-		// Do some operation
-		"xorq	%%rbx, %%rbx\n\t"
-		"movq	32(%%rbp), %%rdx\n\t"
-		"movq	24(%%rbp), %%rcx\n\t"
-		"movq	16(%%rbp), %%rsi\n\t"
-
-	"overheadwriteMM:\n\t"
-		"cmpq	$0, %%rcx\n\t"
-		"je	overheadoutMM\n\t"
-		"movq	%%rdi, %%rdx\n\t"
-		"decq	%%rcx\n\t"
-		"addq	%%rsi, %%rbx\n\t"
-		"jmp	overheadwriteMM\n\t"
-
-	"overheadoutMM:\n\t"
-		// End measuring
-		"movq	%%rbx, -32(%%rbp)\n\t"
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subq	-16(%%rbp), %%rax\n\t"
-		"sbb	-24(%%rbp), %%rdx\n\t"
-
-		// Subtract the overhead
-		"movq	-40(%%rbp), %%rbx\n\t"
-		"subq	%%rax, %%rbx\n\t"
-		"movq	%%rbx, %%rax\n\t"
-
-		// Pop all the regs we used
-		"popq	%%rdi\n\t"
-		"popq	%%rsi\n\t"
-		"popq	%%rbx\n\t"
-
-		// Store the results
-		"movq	%%rax, %0\n\t"
-		"movq	-32(%%rbp), %1\n\t"
-
-		// Restore frame
-		"addq	$40, %%rsp\n\t"
-		"popq	%%rbp\n\t"
+		measure_mem_with_overhead_calc(MM)
 
 		"addq	$32, %%rsp\n\t"
 
 	: "=rax" (diff), "=rcx" (count)
-	: "m" (ptr), "m" (size), "m" (my_stride), "m" (repeatCount)
+	: "m" (ptr), "m" (loopCount), "m" (my_stride), "m" (repeatCount)
 	: "rdx"
 	);
 
@@ -376,95 +335,12 @@ double getFPLatency()
 		"pushq	%2\n\t"		// 16(%%ebp) ptr
 		"pushq	%3\n\t"		// 8(%%ebp) size
 
-		// Set up the frame
-		"pushq	%%rbp\n\t"
-		"movq	%%rsp, %%rbp\n\t"
-		"subq	$40, %%rsp\n\t"
+		measure_block_with_overhead_calc(
+			"fld	16(%%rbp)\n\t",
 
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushq	%%rbx\n\t"
-		"pushq	%%rsi\n\t"
-		"pushq	%%rdi\n\t"
-
-		// Start measuring
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movq	%%rax, -16(%%rbp)\n\t"
-		"movq	%%rdx, -24(%%rbp)\n\t"
-
-		// Set up the loop
-		"movq	$65536, %%rcx\n\t"
-		"xorq	%%rbx, %%rbx\n\t"
-		"fld	16(%%rbp)\n\t"
-
-	"fploop:\n\t"
-		"cmp	$0, %%rcx\n\t"
-		"je	fpout\n\t"
-		"fadd	16(%%rbp)\n\t"
-		"fsub	8(%%rbp)\n\t"
-		"decq	%%rcx\n\t"
-		"incq	%%rbx\n\t"
-		"jmp	fploop\n\t"
-
-		// End measuring
-	"fpout:\n\t"
-		"movq	%%rbx, -32(%%rbp)\n\t"
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subq	-16(%%rbp), %%rax\n\t"
-		"sbb	-24(%%rbp), %%rdx\n\t"
-
-		// Store the result (with overhead)
-		"movq	%%rax, -40(%%rbp)\n\t"
-
-		// Do everything all over again without the actual step to be measured
-		// Start measuring
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movq	%%rax, -16(%%rbp)\n\t"
-		"movq	%%rdx, -24(%%rbp)\n\t"
-
-		// Set up the loop
-		"movq	$65536, %%rcx\n\t"
-		"xorq	%%rbx, %%rbx\n\t"
-		"fld	16(%%rbp)\n\t"
-
-	"overheadfploop:\n\t"
-		"cmp	$0, %%rcx\n\t"
-		"je	overheadfpout\n\t"
-		"decq	%%rcx\n\t"
-		"incq	%%rbx\n\t"
-		"jmp	overheadfploop\n\t"
-
-		// End measuring
-	"overheadfpout:\n\t"
-		"movq	%%rbx, -32(%%rbp)\n\t"
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subq	-16(%%rbp), %%rax\n\t"
-		"sbb	-24(%%rbp), %%rdx\n\t"
-
-		// Subtract the overhead
-		"movq	-40(%%rbp), %%rbx\n\t"
-		"subq	%%rax, %%rbx\n\t"
-		"movq	%%rbx, %%rax\n\t"
-
-		// Pop all the regs we used
-		"popq	%%rdi\n\t"
-		"popq	%%rsi\n\t"
-		"popq	%%rbx\n\t"
-
-		// Store the results
-		"movq	%%rax, %0\n\t"
-		"movq	-32(%%rbp), %1\n\t"
-
-		// Restore frame
-		"addq	$40, %%rsp\n\t"
-		"popq	%%rbp\n\t"
+			"fadd	16(%%rbp)\n\t"
+			"fsub	8(%%rbp)\n\t",
+			65536, fp)
 
 		"addq	$16, %%rsp\n\t"
 
@@ -487,96 +363,12 @@ double getFPSlowLatency()
 		"pushq	%2\n\t"		// 16(%%ebp) ptr
 		"pushq	%3\n\t"		// 8(%%ebp) size
 
-		// Set up the frame
-		"pushq	%%rbp\n\t"
-		"movq	%%rsp, %%rbp\n\t"
-		"subq	$40, %%rsp\n\t"
+		measure_block_with_overhead_calc(
+			"fld	16(%%rbp)\n\t",
 
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushq	%%rbx\n\t"
-		"pushq	%%rsi\n\t"
-		"pushq	%%rdi\n\t"
-
-		// Start measuring
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movq	%%rax, -16(%%rbp)\n\t"
-		"movq	%%rdx, -24(%%rbp)\n\t"
-
-		// Set up the loop
-		"movq	$65536, %%rcx\n\t"
-		"xorq	%%rbx, %%rbx\n\t"
-		"fld	16(%%rbp)\n\t"
-
-	"fpslowloop:\n\t"
-		"cmp	$0, %%rcx\n\t"
-		"je	fpslowout\n\t"
-		"fdiv	8(%%rbp)\n\t"
-		"fsqrt\n\t"
-		"decq	%%rcx\n\t"
-		"incq	%%rbx\n\t"
-		"jmp	fpslowloop\n\t"
-
-		// End measuring
-	"fpslowout:\n\t"
-		"movq	%%rbx, -32(%%rbp)\n\t"
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subq	-16(%%rbp), %%rax\n\t"
-		"sbb	-24(%%rbp), %%rdx\n\t"
-		"movq	-32(%%rbp), %%rbx\n\t"
-
-		// Store the result (with overhead)
-		"movq	%%rax, -40(%%rbp)\n\t"
-
-		// Do everything all over again without the actual step to be measured
-		// Start measuring
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movq	%%rax, -16(%%rbp)\n\t"
-		"movq	%%rdx, -24(%%rbp)\n\t"
-
-		// Set up the loop
-		"movq	$65536, %%rcx\n\t"
-		"xorq	%%rbx, %%rbx\n\t"
-		"fld	16(%%rbp)\n\t"
-
-	"overheadfpslowloop:\n\t"
-		"cmp	$0, %%rcx\n\t"
-		"je	overheadfpslowout\n\t"
-		"decq	%%rcx\n\t"
-		"incq	%%rbx\n\t"
-		"jmp	overheadfpslowloop\n\t"
-
-		// End measuring
-	"overheadfpslowout:\n\t"
-		"movq	%%rbx, -32(%%rbp)\n\t"
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subq	-16(%%rbp), %%rax\n\t"
-		"sbb	-24(%%rbp), %%rdx\n\t"
-
-		// Subtract the overhead
-		"movq	-40(%%rbp), %%rbx\n\t"
-		"subq	%%rax, %%rbx\n\t"
-		"movq	%%rbx, %%rax\n\t"
-
-		// Pop all the regs we used
-		"popq	%%rdi\n\t"
-		"popq	%%rsi\n\t"
-		"popq	%%rbx\n\t"
-
-		// Store the results
-		"movq	%%rax, %0\n\t"
-		"movq	-32(%%rbp), %1\n\t"
-
-		// Restore frame
-		"addq	$40, %%rsp\n\t"
-		"popq	%%rbp\n\t"
+			"fdiv	8(%%rbp)\n\t"
+			"fsqrt\n\t",
+			65536, fpslow)
 
 		"addq	$16, %%rsp\n\t"
 
@@ -590,96 +382,19 @@ double getFPSlowLatency()
 
 double getPredictedBranchLatency()
 {
-	size_t diff;
+	size_t diff, count;
 	__asm__ volatile(
-		// Set up the frame
-		"pushq	%%rbp\n\t"
-		"movq	%%rsp, %%rbp\n\t"
-		"subq	$40, %%rsp\n\t"
 
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushq	%%rbx\n\t"
-		"pushq	%%rsi\n\t"
-		"pushq	%%rdi\n\t"
+		measure_block_with_overhead_calc(
+			"",
+			"cmpq	$0, %%rax\n\t"
+			"je	pbranchnext\n\t"
+		"pbranchnext:\n\t",
+			65536, pbranch)
 
-		// Start measuring
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movq	%%rax, -16(%%rbp)\n\t"
-		"movq	%%rdx, -24(%%rbp)\n\t"
-
-		// Set up the loop
-		"movq	$65536, %%rcx\n\t"
-		"xorq	%%rax, %%rax\n\t"
-
-	"pbranch:\n\t"
-		"cmpq	$0, %%rcx\n\t"
-		"je	pbranchout\n\t"
-		"cmpq	$0, %%rax\n\t"
-		"je	pbranchnext\n\t"
-
-	"pbranchnext:\n\t"
-		"decq	%%rcx\n\t"
-		"jmp	pbranch\n\t"
-
-                // End measuring
-	"pbranchout:\n\t"
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subq	-16(%%rbp), %%rax\n\t"
-		"sbb	-24(%%rbp), %%rdx\n\t"
-
-		// Store the result (with overhead)
-		"movq	%%rax, -40(%%rbp)\n\t"
-
-		// Do everything all over again without the actual step to be measured
-		// Start measuring
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movq	%%rax, -16(%%rbp)\n\t"
-		"movq	%%rdx, -24(%%rbp)\n\t"
-
-		// Set up the loop
-		"movq	$65536, %%rcx\n\t"
-		"xorq	%%rbx, %%rbx\n\t"
-
-	"overheadpbranch:\n\t"
-		"cmp	$0, %%rcx\n\t"
-		"je	overheadpbranchout\n\t"
-		"decq	%%rcx\n\t"
-		"jmp	overheadpbranch\n\t"
-
-		// End measuring
-	"overheadpbranchout:\n\t"
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subq	-16(%%rbp), %%rax\n\t"
-		"sbb	-24(%%rbp), %%rdx\n\t"
-
-		// Subtract the overhead
-		"movq	-40(%%rbp), %%rbx\n\t"
-		"subq	%%rax, %%rbx\n\t"
-		"movq	%%rbx, %%rax\n\t"
-
-		// Pop all the regs we used
-		"popq	%%rdi\n\t"
-		"popq	%%rsi\n\t"
-		"popq	%%rbx\n\t"
-
-		// Store the results
-		"movq	%%rax, %0\n\t"
-
-		// Restore frame
-		"addq	$40, %%rsp\n\t"
-		"popq	%%rbp\n\t"
-
-	: "=rax" (diff)
+	: "=rax" (diff), "=rcx" (count)
 	:
-	: "rcx", "rdx"
+	: "rdx"
 	);
 
 	return diff / 65536.0;
@@ -687,25 +402,11 @@ double getPredictedBranchLatency()
 
 double getMisPredictedBranchLatency()
 {
-	size_t diff;
+	size_t diff, count;
 	__asm__ volatile(
-		// Set up the frame
-		"pushq	%%rbp\n\t"
-		"movq	%%rsp, %%rbp\n\t"
-		"subq	$32, %%rsp\n\t"
 
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushq	%%rbx\n\t"
-		"pushq	%%rsi\n\t"
-		"pushq	%%rdi\n\t"
-
-		// Start measuring
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movq	%%rax, -16(%%rbp)\n\t"
-		"movq	%%rdx, -24(%%rbp)\n\t"
-
+		measure_block_without_overhead_calc(
+			"",
 			"jmp	labelM01\n\t"
 	"labelM01:	jmp	labelM02\n\t"
 	"labelM02:	jmp	labelM03\n\t"
@@ -770,30 +471,12 @@ double getMisPredictedBranchLatency()
 	"labelM61:	jmp	labelM62\n\t"
 	"labelM62:	jmp	labelM63\n\t"
 	"labelM63:	jmp	labelM64\n\t"
-	"labelM64:\n\t"
+	"labelM64:\n\t",
+		1, mpbranch)
 
-                // End measuring
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subq	-16(%%rbp), %%rax\n\t"
-		"sbb	-24(%%rbp), %%rdx\n\t"
-
-		// Pop all the regs we used
-		"popq	%%rdi\n\t"
-		"popq	%%rsi\n\t"
-		"popq	%%rbx\n\t"
-
-		// Store the result
-		"movq	%%rax, %0\n\t"
-
-		// Restore frame
-		"addq	$32, %%rsp\n\t"
-		"popq	%%rbp\n\t"
-
-	: "=rax" (diff)
+	: "=rax" (diff), "=rcx" (count)
 	:
-	: "rcx", "rdx"
+	: "rdx"
 	);
 
 	return diff / 64.0;
@@ -805,7 +488,7 @@ double getTLBLatency(long size)
 	size_t stride = getpagesize();
 	int warmup = 0;
 
-	unsigned char *ptr;
+	size_t *ptr;
 
 	if ((ret = posix_memalign((void**) &ptr, 8, size) != 0) || ptr == NULL)
 	{
@@ -818,6 +501,13 @@ double getTLBLatency(long size)
 		return 0;
 	}
 
+	int i, unit_inc = stride/sizeof(size_t);
+	for (i=0; i<size/stride-1; i++)
+		ptr[i*unit_inc] = (size_t) &(ptr[(i+1)*unit_inc]);
+
+	ptr[(size/stride-1) * unit_inc] = (size_t) &(ptr[0]);
+
+	size = size / stride;
 	size_t repeatCount = (warmup == 0 ? 1 : 2);
 
 	__asm__ volatile(
@@ -827,147 +517,7 @@ double getTLBLatency(long size)
 		"pushq	%4\n\t"		// 16(%%ebp) stride
 		"pushq	%5\n\t"		// 8(%%ebp)  repeatCount
 
-		// Set up the frame
-		"pushq	%%rbp\n\t"
-		"movq	%%rsp, %%rbp\n\t"
-		"subq	$40, %%rsp\n\t"
-
-		// Push all regs that we will use in this routine, which is basically all GPRs plus a few others
-		"pushq	%%rbx\n\t"
-		"pushq	%%rsi\n\t"
-		"pushq	%%rdi\n\t"
-
-		// Set up repeat counter
-		"movq	8(%%rbp), %%rbx\n\t"
-		"movq	%%rbx, -8(%%rbp)\n\t"
-
-		"xorq	%%rbx, %%rbx\n\t"
-		"movq	32(%%rbp), %%rdx\n\t"
-		"movq	24(%%rbp), %%rcx\n\t"
-		"movq	16(%%rbp), %%rsi\n\t"
-		"movq	%%rdx, %%rdi\n\t"
-		"addq	%%rsi, %%rdi\n\t"
-
-
-
-	"tlbsetup:\n\t"
-		"cmpq	$0, %%rcx\n\t"
-		"je	tlbsetupout\n\t"
-		"movq	%%rdi, (%%rdx, %%rbx)\n\t"
-		"subq	%%rsi, %%rcx\n\t"
-		"addq	%%rsi, %%rbx\n\t"
-		"addq	%%rsi, %%rdi\n\t"
-		"jmp	tlbsetup\n\t"
-
-	"tlbsetupout:\n\t"
-		// "Cyclic reference, last location contains address of first location
-		"movq	%%rdx, (%%rdx, %%rbx)\n\t"
-
-		// Change the count of times we loop over this cyclic array
-		"movq	24(%%rbp), %%rcx\n\t"
-		"addq	%%rsi, %%rcx\n\t"
-
-	"tlbshift:\n\t"
-		"cmpq   $1, %%rsi\n\t"
-		"je     tlbshiftout\n\t"
-		"shrq   $1, %%rsi\n\t"
-		"shrq   $1, %%rcx\n\t"
-		"jmp    tlbshift\n\t"
-
-	"tlbshiftout:\n\t"
-		// Loop a million times
-		"movq   %%rcx, 24(%%rbp)\n\t"
-
-        "tlbrepeat:\n\t"
-		// Start measuring
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movq	%%rax, -16(%%rbp)\n\t"
-		"movq	%%rdx, -24(%%rbp)\n\t"
-
-		// Do some operation
-		"xorq	%%rbx, %%rbx\n\t"
-		"movq	32(%%rbp), %%rdx\n\t"
-		"movq	24(%%rbp), %%rcx\n\t"
-		"movq	16(%%rbp), %%rsi\n\t"
-
-	"tlbwrite:\n\t"
-		"cmpq	$0, %%rcx\n\t"
-		"je	tlbout\n\t"
-		"movq	(%%rdx), %%rdi\n\t"
-		"movq	%%rdi, %%rdx\n\t"
-		"decq	%%rcx\n\t"
-		"addq	%%rsi, %%rbx\n\t"
-		"jmp	tlbwrite\n\t"
-
-	"tlbout:\n\t"
-		// End measuring
-		"movq	%%rbx, -32(%%rbp)\n\t"
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subq	-16(%%rbp), %%rax\n\t"
-		"sbb	-24(%%rbp), %%rdx\n\t"
-
-		// Check if we have to repeat
-		"decq	-8(%%rbp)\n\t"
-		"jnz	tlbrepeat\n\t"
-
-		// Store the result (with overhead)
-		"movq	%%rax, -40(%%rbp)\n\t"
-
-		// TODO: We now have to subtract the cycles spent in TLB hits, so access the last 32 locations,
-		// extrapolate to original count and subtract
-
-		// Do everything all over again without the actual step to be measured
-		// Start measuring
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"movq	%%rax, -16(%%rbp)\n\t"
-		"movq	%%rdx, -24(%%rbp)\n\t"
-
-		// Do some operation
-		"xorq	%%rbx, %%rbx\n\t"
-		"movq	32(%%rbp), %%rdx\n\t"
-		"movq	24(%%rbp), %%rcx\n\t"
-		"movq	16(%%rbp), %%rsi\n\t"
-
-	"tlboverheadwrite:\n\t"
-		"cmpq	$0, %%rcx\n\t"
-		"je	tlboverheadout\n\t"
-		"movq	%%rdi, %%rdx\n\t"
-		"decq	%%rcx\n\t"
-		"addq	%%rsi, %%rbx\n\t"
-		"jmp	tlboverheadwrite\n\t"
-
-	"tlboverheadout:\n\t"
-		// End measuring
-		"movq	%%rbx, -32(%%rbp)\n\t"
-		"xorq	%%rax, %%rax\n\t"
-		"cpuid\n\t"
-		"rdtsc\n\t"
-		"subq	-16(%%rbp), %%rax\n\t"
-		"sbb	-24(%%rbp), %%rdx\n\t"
-
-		// Subtract the overhead
-		"movq	-40(%%rbp), %%rbx\n\t"
-		"subq	%%rax, %%rbx\n\t"
-		"movq	%%rbx, %%rax\n\t"
-
-		// Pop all the regs we used
-		"popq	%%rdi\n\t"
-		"popq	%%rsi\n\t"
-		"popq	%%rbx\n\t"
-
-		// Store the results
-		"movq	%%rax, %0\n\t"
-		"movq	-32(%%rbp), %1\n\t"
-
-		// Restore frame
-		"addq	$40, %%rsp\n\t"
-		"popq	%%rbp\n\t"
+		measure_mem_with_overhead_calc(tlb)
 
 		"addq	$32, %%rsp\n\t"
 
@@ -979,6 +529,5 @@ double getTLBLatency(long size)
 	free(ptr);
 	return diff / ((float) (count / ((float) stride)));
 }
-
 
 #endif /* X86_64_H */

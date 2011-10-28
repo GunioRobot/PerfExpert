@@ -412,6 +412,10 @@ int main( int argc, char * argv[] )
 	BR_miss_lat = getMisPredictedBranchLatency();
 	printf ("BR_miss_lat = %.2lf\n", BR_miss_lat < 1.0 ? 1.0 : BR_miss_lat);
 
+	// Warm up TLBs?
+	for (i=0; i<32; i++)
+		allocateAndTest(4096, /* lpCache->info.lineSize */ 512, 1);
+
 	TLB_lat = getTLBLatency(512*1024);
 	printf ("TLB_lat = %.2lf\n", TLB_lat < 1.0 ? 1.0 : TLB_lat);
 
